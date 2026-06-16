@@ -1,44 +1,58 @@
 <template>
-  <div class="min-h-screen bg-slate-50 font-sans antialiased text-slate-800">
-    <!-- Kurumsal Header ve Orijinal Bonna Logo Yerleşimi -->
+  <div class="min-h-screen bg-slate-50 font-sans antialiased text-slate-800 relative">
     <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm select-none">
       <div class="flex items-center gap-4 cursor-pointer" @click="router.push('/dashboard')">
         <img src="https://bonna-website.b-cdn.net/bonnacloud-assets/BonnaCloud-Logo.png" alt="Bonna Cloud Logo" class="h-8 w-auto object-contain" />
-        <h1 class="text-base font-black tracking-tight text-slate-900 border-l border-slate-200 pl-4">Control Center</h1>
+        <h1 class="text-base font-black tracking-tight text-slate-900 border-l border-slate-200 pl-4">Admin Panel</h1>
       </div>
       
       <div class="flex gap-2 border border-slate-200 p-0.5 bg-slate-100 rounded-xl">
         <button @click="activeTab = 'users'" :class="activeTab === 'users' ? 'bg-white text-slate-900 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-900'" class="px-4 py-1.5 rounded-lg text-xs transition-all">Users Control</button>
-        <button @click="activeTab = 'roles'" :class="activeTab === 'roles' ? 'bg-white text-slate-900 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-900'" class="px-4 py-1.5 rounded-lg text-xs transition-all">Roles & Permissions</button>
-        <button @click="activeTab = 'cdn'" :class="activeTab === 'cdn' ? 'bg-white text-slate-900 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-900'" class="px-4 py-1.5 rounded-lg text-xs transition-all">CDN Engine</button>
+        <button @click="activeTab = 'roles'" :class="activeTab === 'roles' ? 'bg-white text-slate-900 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-900'" class="px-4 py-1.5 rounded-lg text-xs transition-all">Roles</button>
+        <button @click="activeTab = 'cdn'" :class="activeTab === 'cdn' ? 'bg-white text-slate-900 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-900'" class="px-4 py-1.5 rounded-lg text-xs transition-all">CDN Config</button>
       </div>
     </header>
 
-    <main class="max-w-7xl mx-auto p-6">
-      <!-- 1. KULLANICI YÖNETİMİ SEKMESİ -->
+    <main class="max-w-7xl mx-auto p-6 pb-24">
       <section v-if="activeTab === 'users'" class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
         <div class="flex justify-between items-center mb-6">
           <div>
-            <h2 class="text-base font-black text-slate-900">User Master List</h2>
+            <h2 class="text-base font-black text-slate-900">User List</h2>
             <p class="text-xs text-slate-400 font-medium mt-0.5">Manage corporate credentials and assign access roles.</p>
           </div>
-          <button @click="openUserModal(null)" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95">+ Add New User</button>
+          <div class="flex gap-2">
+            <button v-if="selectedUsers.length > 0" @click="deleteSelectedUsers" class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95 animate-fade-in">
+              🗑️ Delete Selected ({{ selectedUsers.length }})
+            </button>
+            
+            <input type="file" ref="fileInput" @change="handleBulkUpload" accept=".xlsx" class="hidden" />
+            <button @click="triggerBulkUpload" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95">📥 Import Excel</button>
+            <button @click="openUserModal(null)" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95">+ Add New User</button>
+          </div>
         </div>
 
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto select-none">
           <table class="min-w-full text-left text-xs divide-y divide-slate-100">
             <thead>
               <tr class="text-slate-400 font-bold uppercase tracking-wider bg-slate-50/70">
-                <th class="px-4 py-3 rounded-l-xl">Full Name</th>
+                <th class="px-4 py-3 rounded-l-xl w-10 text-center">
+                  <input type="checkbox" @change="toggleAllUsers" :checked="selectedUsers.length === users.length && users.length > 0" class="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-0 cursor-pointer" />
+                </th>
+                <th class="px-4 py-3">Full Name</th>
                 <th class="px-4 py-3">Email Address</th>
-                <th class="px-4 py-3">Inherited Access Role</th>
+                <th class="px-4 py-3">Company</th>
+                <th class="px-4 py-3">Role</th>
                 <th class="px-4 py-3">Status</th>
                 <th class="px-4 py-3 rounded-r-xl w-24 text-center">Actions</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-50 font-medium text-slate-700">
-              <tr v-for="user in users" :key="user.id" class="hover:bg-slate-50/50">
+              <tr v-for="(user, index) in users" :key="user.id" class="hover:bg-slate-50/50 transition-colors" :class="{'bg-blue-50/40': selectedUsers.includes(user.id)}">
+                <td class="px-4 py-3.5 w-10 text-center" @click.stop>
+                  <input type="checkbox" :checked="selectedUsers.includes(user.id)" @click="handleUserSelect($event, user.id, index)" class="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-0 cursor-pointer" />
+                </td>
                 <td class="px-4 py-3.5 font-bold text-slate-900">{{ user.name }}</td>
+                <td class="px-4 py-3.5 text-slate-600">{{ user.company || '-' }}</td>
                 <td class="px-4 py-3.5 text-slate-500">{{ user.email }}</td>
                 <td class="px-4 py-3.5">
                   <span class="px-2.5 py-1 bg-blue-50 border border-blue-100 text-blue-700 font-bold rounded-lg">{{ user.role_name }}</span>
@@ -56,12 +70,11 @@
         </div>
       </section>
 
-      <!-- 2. ROL TABANLI YETKİLENDİRME SEKMESİ -->
       <section v-if="activeTab === 'roles'" class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
         <div class="flex justify-between items-center mb-6">
           <div>
-            <h2 class="text-base font-black text-slate-900">Roles & Directory Authorization Engine</h2>
-            <p class="text-xs text-slate-400 font-medium mt-0.5">Define corporate roles and set Bunny CDN directory access rules globally.</p>
+            <h2 class="text-base font-black text-slate-900">Roles Authorization</h2>
+            <p class="text-xs text-slate-400 font-medium mt-0.5">Define corporate roles.</p>
           </div>
           <button @click="openRoleModal(null)" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95">+ Add New Role</button>
         </div>
@@ -90,9 +103,8 @@
         </div>
       </section>
 
-      <!-- 3. CDN AYARLARI SEKMESİ -->
       <section v-if="activeTab === 'cdn'" class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 max-w-xl mx-auto">
-        <h2 class="text-base font-black text-slate-900 mb-1">Bunny.net CDN Node Configuration</h2>
+        <h2 class="text-base font-black text-slate-900 mb-1">Bunny.net CDN Configuration</h2>
         <p class="text-xs text-slate-400 font-medium mb-6">Link global cloud storage layers directly to the platform backend safely.</p>
         <form @submit.prevent="saveCdnSettings" class="space-y-4 text-xs font-bold">
           <div>
@@ -111,12 +123,11 @@
             <label class="block text-slate-600 mb-1.5">Storage Main Region Prefix (Optional)</label>
             <input v-model="cdnForm.region" type="text" placeholder="e.g. ny, sg, se (leave blank for Europe/Falkenstein)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-medium focus:outline-none focus:border-slate-900 focus:bg-white" />
           </div>
-          <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95">Commit CDN Updates</button>
+          <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95">Confirm CDN Credentials</button>
         </form>
       </section>
     </main>
 
-    <!-- ROL MODAL -->
     <div v-if="showRoleModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showRoleModal = false"></div>
       <div class="relative bg-white w-full max-w-4xl rounded-2xl shadow-2xl p-6 flex flex-col z-10 text-xs font-bold h-[88vh] animate-fade-in">
@@ -129,7 +140,7 @@
           </div>
           
           <div class="shrink-0 flex flex-col">
-            <label class="block text-slate-600 mb-1.5">Hali Hazırda Yetki Verilmiş Dosya / Klasör Listesi</label>
+            <label class="block text-slate-600 mb-1.5">Assigned Folders / Directories</label>
             <div class="border border-slate-200 rounded-xl bg-slate-50 max-h-28 overflow-y-auto p-2 space-y-1.5 shadow-inner">
               <div v-for="(folder, idx) in roleForm.allowedFolders" :key="idx" class="flex items-center justify-between bg-white border border-slate-100 p-1.5 rounded-lg shadow-sm">
                 <div class="flex items-center gap-2 overflow-hidden mr-2">
@@ -140,14 +151,13 @@
                   </div>
                 </div>
                 <button type="button" @click="roleForm.allowedFolders.splice(idx, 1)" class="text-red-600 hover:text-white border border-red-200 hover:bg-red-500 hover:border-red-500 px-2.5 py-1 rounded-md text-[10px] font-black transition-all shrink-0 shadow-sm active:scale-95">
-                  Yetkiyi Kaldır
+                  Revoke
                 </button>
               </div>
-              <p v-if="roleForm.allowedFolders.length === 0" class="text-slate-400 font-medium italic text-center py-2.5 text-[10px]">Bu role tanımlanmış aktif bir yetki bulunmuyor.</p>
+              <p v-if="roleForm.allowedFolders.length === 0" class="text-slate-400 font-medium italic text-center py-2.5 text-[10px]">No active permissions.</p>
             </div>
           </div>
 
-          <!-- BREADCRUMBS SİSTEMİ -->
           <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 p-2 rounded-xl text-xs shrink-0 select-none">
             <button v-if="adminCurrentPath" type="button" @click="adminGoToParent" class="px-2 py-1 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg text-[10px] font-bold shadow-sm">▲ Up</button>
             <span class="text-slate-400 font-bold">Location:</span>
@@ -158,7 +168,6 @@
             </span>
           </div>
 
-          <!-- ANA EKRAN İKİZİ LİSTE TABLOSU -->
           <div class="flex-1 overflow-y-auto border border-slate-100 bg-white shadow-inner rounded-xl min-h-0">
             <div v-if="loadingFolders" class="flex flex-col items-center py-12 justify-center text-slate-400">
               <div class="w-5 h-5 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin mb-2"></div>
@@ -208,16 +217,15 @@
         
         <div class="flex justify-end gap-2 mt-3 border-t border-slate-100 pt-3 shrink-0">
           <button @click="showRoleModal = false" class="px-4 py-2 border border-slate-200 bg-white rounded-xl text-slate-700">Cancel</button>
-          <button @click="saveRole" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl">Commit Changes</button>
+          <button @click="saveRole" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl">Confirm</button>
         </div>
       </div>
     </div>
 
-    <!-- KULLANICI MODAL -->
     <div v-if="showUserModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showUserModal = false"></div>
       <div class="relative bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 z-10 text-xs font-bold">
-        <h3 class="text-sm font-black text-slate-900 mb-4">{{ userForm.id ? 'Modify System Credentials' : 'Register New Secure Member' }}</h3>
+        <h3 class="text-sm font-black text-slate-900 mb-4">{{ userForm.id ? 'Modify System Credentials' : 'Create New Member' }}</h3>
         <div class="space-y-4">
           <div>
             <label class="block text-slate-600 mb-1.5">User Full Name</label>
@@ -228,20 +236,16 @@
             <input v-model="userForm.email" type="email" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-medium focus:outline-none focus:border-slate-900 focus:bg-white" />
           </div>
           <div>
-            <label class="block text-slate-600 mb-1.5">Account Password {{ userForm.id ? '(Leave blank to keep same)' : '' }}</label>
+            <label class="block text-slate-600 mb-1.5">Password {{ userForm.id ? '(Leave blank to keep same)' : '' }}</label>
             <input v-model="userForm.password" type="password" :required="!userForm.id" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-medium focus:outline-none focus:border-slate-900 focus:bg-white" />
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-slate-600 mb-1.5">Core Group Type</label>
-              <select v-model="userForm.role" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-medium focus:outline-none focus:border-slate-900 focus:bg-white">
-                <option value="müşteri">Müşteri (Customer)</option>
-                <option value="ekip">Şirket Ekibi (Team)</option>
-                <option value="admin">Yönetici (Admin)</option>
-              </select>
+              <label class="block text-slate-600 mb-1.5">Company</label>
+              <input v-model="userForm.company" type="text" placeholder="e.g. Bonna" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-medium focus:outline-none focus:border-slate-900 focus:bg-white" />
             </div>
             <div>
-              <label class="block text-slate-600 mb-1.5">Assign Access Role</label>
+              <label class="block text-slate-600 mb-1.5">Role</label>
               <select v-model="userForm.role_id" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-blue-700 focus:outline-none focus:border-slate-900 focus:bg-white">
                 <option :value="null">No Role (Access Denied)</option>
                 <option v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</option>
@@ -255,10 +259,41 @@
         </div>
         <div class="flex justify-end gap-2 mt-6 border-t border-slate-100 pt-4">
           <button @click="showUserModal = false" class="px-4 py-2 border border-slate-200 bg-white rounded-xl text-slate-700">Cancel</button>
-          <button @click="saveUser" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl">Commit Credentials</button>
+          <button @click="saveUser" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl">Confirm</button>
         </div>
       </div>
     </div>
+
+    <div v-if="confirmDialog.isOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4 select-none">
+      <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="cancelConfirm"></div>
+      <div class="relative bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 z-10 text-center animate-fade-in border border-slate-100">
+        
+        <div class="mx-auto flex items-center justify-center h-14 w-14 rounded-full mb-4 shadow-inner bg-amber-50 text-amber-500 border border-amber-100">
+          <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+        </div>
+        
+        <h3 class="text-lg font-black text-slate-900 mb-2">{{ confirmDialog.title }}</h3>
+        <p class="text-sm text-slate-500 font-medium mb-8 leading-relaxed">{{ confirmDialog.message }}</p>
+        
+        <div class="flex gap-3 justify-center w-full">
+          <button @click="cancelConfirm" class="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-sm active:scale-95">
+            No
+          </button>
+          <button @click="acceptConfirm" class="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-md active:scale-95">
+            Yes
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="toast.show" 
+         class="fixed bottom-10 left-1/2 transform -translate-x-1/2 px-5 py-3 rounded-xl shadow-2xl font-bold text-xs z-[150] flex items-center gap-2 border animate-fade-in transition-all" 
+         :class="toast.type === 'success' ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-red-500 text-white border-red-400'">
+      <svg v-if="toast.type === 'success'" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+      <svg v-else class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+      {{ toast.message }}
+    </div>
+
   </div>
 </template>
 
@@ -279,10 +314,51 @@ const loadingFolders = ref(false)
 const showUserModal = ref(false)
 const showRoleModal = ref(false)
 
+const fileInput = ref(null)
+
+const selectedUsers = ref([])
+const lastSelectedIndex = ref(null)
+
 const cdnForm = ref({ storageName: "", storagePassword: "", pullZoneUrl: "", region: "" })
-const userForm = ref({ id: null, name: "", email: "", password: "", role: "müşteri", role_id: null, isActive: true })
+const userForm = ref({ id: null, name: "", email: "", password: "", role_id: null, company: "", isActive: true })
 const roleForm = ref({ id: null, name: "", allowedFolders: [] })
 
+// ==========================================
+// TOAST (BİLGİ/HATA) YÖNETİMİ
+// ==========================================
+const toast = ref({ show: false, message: '', type: 'success' })
+let toastTimer = null
+
+const triggerToast = (msg, type = 'success') => {
+  if (toastTimer) clearTimeout(toastTimer)
+  toast.value = { show: true, message: msg, type }
+  toastTimer = setTimeout(() => { toast.value.show = false }, 4000)
+}
+
+// ==========================================
+// MERKEZİ ONAY (YES/NO) YÖNETİMİ
+// ==========================================
+const confirmDialog = ref({ isOpen: false, title: '', message: '', resolvePromise: null })
+
+const showConfirm = (title, message) => {
+  return new Promise((resolve) => {
+    confirmDialog.value = { isOpen: true, title, message, resolvePromise: resolve }
+  })
+}
+
+const acceptConfirm = () => {
+  confirmDialog.value.isOpen = false
+  if (confirmDialog.value.resolvePromise) confirmDialog.value.resolvePromise(true)
+}
+
+const cancelConfirm = () => {
+  confirmDialog.value.isOpen = false
+  if (confirmDialog.value.resolvePromise) confirmDialog.value.resolvePromise(false)
+}
+
+// ==========================================
+// API İŞLEMLERİ
+// ==========================================
 const fetchAllData = async () => {
   try {
     const uResp = await axios.get(`${window.location.origin}/api/users`)
@@ -292,8 +368,78 @@ const fetchAllData = async () => {
     const cResp = await axios.get(`${window.location.origin}/api/cdn`)
     cdnForm.value = cResp.data
   } catch (err) {
-    alert("Authorization node sync error.")
+    triggerToast("Authorization node sync error.", "error")
   }
+}
+
+const handleUserSelect = (event, userId, index) => {
+  const isChecked = event.target.checked
+  if (event.shiftKey && lastSelectedIndex.value !== null) {
+    const start = Math.min(index, lastSelectedIndex.value)
+    const end = Math.max(index, lastSelectedIndex.value)
+    const idsInRange = users.value.slice(start, end + 1).map(u => u.id)
+    if (isChecked) {
+      const newSet = new Set([...selectedUsers.value, ...idsInRange])
+      selectedUsers.value = Array.from(newSet)
+    } else {
+      selectedUsers.value = selectedUsers.value.filter(id => !idsInRange.includes(id))
+    }
+  } else {
+    if (isChecked) {
+      selectedUsers.value.push(userId)
+    } else {
+      selectedUsers.value = selectedUsers.value.filter(id => id !== userId)
+    }
+  }
+  lastSelectedIndex.value = index
+}
+
+const toggleAllUsers = (event) => {
+  if (event.target.checked) {
+    selectedUsers.value = users.value.map(u => u.id)
+  } else {
+    selectedUsers.value = []
+  }
+  lastSelectedIndex.value = null
+}
+
+const deleteSelectedUsers = async () => {
+  if (selectedUsers.value.length === 0) return
+  
+  const isConfirmed = await showConfirm(
+    'Bulk Deletion Warning', 
+    `Are you sure you want to permanently delete the selected ${selectedUsers.value.length} users?`
+  )
+  if (!isConfirmed) return
+  
+  const session = JSON.parse(localStorage.getItem('bonna_user_session') || '{}')
+  const currentUserId = session.id
+  
+  let errorOccurred = false
+  let deletedCount = 0
+
+  for (const id of selectedUsers.value) {
+    if (id === currentUserId) {
+      triggerToast("You cannot delete your own account.", "error")
+      continue
+    }
+    try {
+      await axios.delete(`${window.location.origin}/api/users/${id}`)
+      deletedCount++
+    } catch (err) {
+      errorOccurred = true
+    }
+  }
+  
+  if (errorOccurred) {
+     triggerToast("Error occurred while deleting some users.", "error")
+  } else if (deletedCount > 0) {
+     triggerToast(`${deletedCount} users successfully deleted.`, "success")
+  }
+  
+  selectedUsers.value = [] 
+  lastSelectedIndex.value = null
+  fetchAllData() 
 }
 
 const adminBrowseFolder = async (targetPath = "") => {
@@ -345,7 +491,6 @@ const isItemChecked = (itemId) => {
   return false
 }
 
-// 🌟 GÜNCELLEME: BOYUT (SIZE) PARAMETRESİNİ DE HAFIZAYA ALAN METOT
 const handleItemToggle = (event, item) => {
   const newState = event.target.checked
   roleForm.value.allowedFolders = roleForm.value.allowedFolders.filter(f => f.id !== item.id)
@@ -364,7 +509,7 @@ const handleItemToggle = (event, item) => {
       id: item.id,
       name: item.name,
       mimeType: item.mimeType,
-      size: item.size || 0, // Dosyanın gerçek boyutunu burada mühürle!
+      size: item.size || 0,
       allowed: newState
     })
   }
@@ -388,7 +533,7 @@ const openRoleModal = async (role = null) => {
 }
 
 const saveRole = async () => {
-  if (!roleForm.value.name.trim()) return alert("Role name is required.")
+  if (!roleForm.value.name.trim()) return triggerToast('Role name is required.', 'error')
   try {
     if (roleForm.value.id) {
       await axios.put(`${window.location.origin}/api/roles/${roleForm.value.id}`, roleForm.value)
@@ -397,15 +542,22 @@ const saveRole = async () => {
     }
     showRoleModal.value = false
     fetchAllData()
-  } catch (err) { alert(err.response?.data?.detail || "Role save failed.") }
+    triggerToast("Role saved successfully.", "success")
+  } catch (err) { triggerToast(err.response?.data?.detail || "Role save failed.", "error") }
 }
 
 const deleteRole = async (id) => {
-  if (!confirm("Are you sure you want to completely purge this access role?")) return
+  const isConfirmed = await showConfirm(
+    'Purge Role', 
+    'Are you sure you want to completely purge this access role from the system?'
+  )
+  if (!isConfirmed) return
+  
   try {
     await axios.delete(`${window.location.origin}/api/roles/${id}`)
     fetchAllData()
-  } catch (err) { alert("Purge aborted.") }
+    triggerToast("Role successfully purged.", "success")
+  } catch (err) { triggerToast('Purge aborted due to system error.', "error") }
 }
 
 const isVideo = (filename) => ['mp4', 'webm', 'ogg', 'mov', 'avi'].includes(filename.split('.').pop().toLowerCase())
@@ -423,9 +575,9 @@ const formatSize = (bytes) => {
 
 const openUserModal = (user = null) => {
   if (user) {
-    userForm.value = { id: user.id, name: user.name, email: user.email, password: "", role: user.role, role_id: user.role_id, isActive: user.isActive }
+    userForm.value = { id: user.id, name: user.name, email: user.email, password: "", role_id: user.role_id, company: user.company, isActive: user.isActive }
   } else {
-    userForm.value = { id: null, name: "", email: "", password: "", role: "müşteri", role_id: roles.value[0]?.id || null, isActive: true }
+    userForm.value = { id: null, name: "", email: "", password: "", role_id: roles.value[0]?.id || null, company: "", isActive: true }
   }
   showUserModal.value = true
 }
@@ -439,22 +591,63 @@ const saveUser = async () => {
     }
     showUserModal.value = false
     fetchAllData()
-  } catch (err) { alert(err.response?.data?.detail || "Credential modification error.") }
+    triggerToast("User saved successfully.", "success")
+  } catch (err) { triggerToast(err.response?.data?.detail || "Credential modification error.", "error") }
 }
 
 const deleteUser = async (id) => {
-  if (!confirm("Delete this user permanently from cloud registry?")) return
+  const isConfirmed = await showConfirm(
+    'Delete User', 
+    'Are you sure you want to delete this user permanently from the cloud registry?'
+  )
+  if (!isConfirmed) return
+  
   try {
     await axios.delete(`${window.location.origin}/api/users/${id}`)
     fetchAllData()
-  } catch (err) { alert("Deletion error.") }
+    triggerToast("User deleted successfully.", "success")
+  } catch (err) { triggerToast("Deletion error. Action could not be completed.", "error") }
+}
+
+const triggerBulkUpload = () => fileInput.value.click()
+
+const handleBulkUpload = async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+  
+  const isConfirmed = await showConfirm(
+    'Confirm Import', 
+    `Are you sure you want to import users from "${file.name}"? This will add or update user records.`
+  )
+  
+  if (!isConfirmed) {
+    event.target.value = '' 
+    return
+  }
+  
+  const formData = new FormData()
+  formData.append("file", file)
+  
+  try {
+    const resp = await axios.post(`${window.location.origin}/api/users/bulk`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    triggerToast(resp.data.message, "success")
+    fetchAllData() 
+  } catch (err) {
+    triggerToast(err.response?.data?.detail || err.message, "error")
+  } finally {
+    event.target.value = '' 
+  }
 }
 
 const saveCdnSettings = async () => {
   try {
     await axios.post(`${window.location.origin}/api/cdn`, cdnForm.value)
-    alert("CDN Node records synchronised successfully.")
-  } catch { alert("Failed sync.") }
+    triggerToast("CDN Node records synchronised successfully.", "success")
+  } catch { 
+    triggerToast("Failed to sync CDN configurations.", "error") 
+  }
 }
 
 onMounted(() => {

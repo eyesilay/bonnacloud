@@ -5,10 +5,12 @@ import zipfile
 import mimetypes
 import urllib.parse
 import requests
+import csv
+import openpyxl
 from typing import List, Optional
 from datetime import datetime, timedelta
 
-from fastapi import FastAPI, HTTPException, Depends, Security
+from fastapi import FastAPI, HTTPException, Depends, Security, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,16 +34,18 @@ class UserCreateRequest(BaseModel):
     name: str
     email: str
     password: str
-    role: str
+    role: Optional[str] = "müşteri"
     role_id: Optional[int] = None
+    company: Optional[str] = None
     isActive: bool = True
 
 class UserUpdateRequest(BaseModel):
     name: str
     email: str
     password: Optional[str] = None
-    role: str
+    role: Optional[str] = "müşteri"
     role_id: Optional[int] = None
+    company: Optional[str] = None
     isActive: bool = True
 
 class ZipDownloadRequest(BaseModel):
@@ -113,6 +117,8 @@ def init_db():
             try: conn.execute(text("ALTER TABLE users ADD COLUMN lockout_until DATETIME;")); conn.commit()
             except: pass
             try: conn.execute(text("ALTER TABLE users ADD COLUMN role_id INTEGER REFERENCES roles(id);")); conn.commit()
+            except: pass
+            try: conn.execute(text("ALTER TABLE users ADD COLUMN company VARCHAR;")); conn.commit()
             except: pass
     except Exception as e: print(f"Database sync alert: {e}")
 
@@ -201,13 +207,13 @@ def delete_role(role_id: int, db: Session = Depends(get_db), current_user: UserD
 @app.get("/api/users")
 def get_users(db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     if current_user.role != "admin": raise HTTPException(status_code=403, detail="Yetkiniz yok.")
-    return [{"id": u.id, "name": u.name, "email": u.email, "role": u.role, "role_id": u.role_id, "role_name": u.role_rel.name if u.role_rel else "Rol Atanmamış", "isActive": u.is_active} for u in db.query(UserDB).all()]
+    return [{"id": u.id, "name": u.name, "email": u.email, "role_id": u.role_id, "role_name": u.role_rel.name if u.role_rel else "Rol Atanmamış", "company": u.company, "isActive": u.is_active} for u in db.query(UserDB).all()]
 
 @app.post("/api/users")
 def create_user(payload: UserCreateRequest, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     if current_user.role != "admin": raise HTTPException(status_code=403, detail="Yetkiniz yok.")
     if db.query(UserDB).filter(UserDB.email == payload.email).first(): raise HTTPException(status_code=400, detail="Bu e-posta adresi kullanımda.")
-    db.add(UserDB(name=payload.name, email=payload.email, password=get_password_hash(payload.password), role=payload.role, role_id=payload.role_id, is_active=payload.isActive))
+    db.add(UserDB(name=payload.name, email=payload.email, password=get_password_hash(payload.password), role=payload.role, role_id=payload.role_id, company=payload.company, is_active=payload.isActive))
     db.commit()
     return {"message": "Kullanıcı başarıyla oluşturuldu."}
 
@@ -216,7 +222,7 @@ def update_user(user_id: int, payload: UserUpdateRequest, db: Session = Depends(
     if current_user.role != "admin": raise HTTPException(status_code=403, detail="Yetkiniz yok.")
     target_user = db.query(UserDB).filter(UserDB.id == user_id).first()
     if not target_user: raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı.")
-    target_user.name = payload.name; target_user.email = payload.email; target_user.role = payload.role; target_user.role_id = payload.role_id; target_user.is_active = payload.isActive
+    target_user.name = payload.name; target_user.email = payload.email; target_user.role_id = payload.role_id; target_user.company = payload.company; target_user.is_active = payload.isActive
     if payload.password: target_user.password = get_password_hash(payload.password)
     db.commit()
     return {"message": "Kullanıcı başarıyla güncellendi."}
@@ -231,6 +237,93 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: UserD
     db.commit()
     return {"message": "Kullanıcı başarıyla silindi."}
 
+@app.post("/api/users/bulk")
+async def bulk_create_users(file: UploadFile = File(...), db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
+    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Yetkiniz yok.")
+    
+    content = await file.read()
+    
+    try:
+        wb = openpyxl.load_workbook(filename=io.BytesIO(content), data_only=True)
+        ws = wb.active
+        
+        # 1. Başlıkları tamamen küçük harfe çevir ve boşlukları sil
+        raw_headers = []
+        for cell in ws[1]:
+            val = str(cell.value).strip().lower() if cell.value is not None else ""
+            raw_headers.append(val)
+        
+        all_roles = db.query(RoleDB).all()
+        
+        def to_lower_safe(text):
+            return str(text).replace('I', 'ı').replace('İ', 'i').strip().lower()
+        
+        added_count = 0
+        updated_count = 0
+        
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            row_data = dict(zip(raw_headers, row))
+            
+            email = None
+            password = None
+            role_name = None
+            company = None
+            
+            # 2. DİNAMİK SÜTUN ARAMA (Sütun adı ne olursa olsun affetmez yakalar)
+            for key, val in row_data.items():
+                if val is None: continue
+                if "mail" in key: email = val
+                elif "pass" in key or "şifre" in key or "sifre" in key: password = val
+                elif "role" in key or "rol" in key: role_name = val
+                elif "company" in key or "şirket" in key or "sirket" in key: company = val
+            
+            if not email or not password: continue
+            
+            email = str(email).strip()
+            password = str(password).strip()
+            company_str = str(company).strip() if company is not None else None
+            
+            # 3. AKILLI ROL EŞLEŞTİRME (Tam veya Kısmi Eşleşme)
+            role_id = None
+            if role_name is not None and str(role_name).strip() != "":
+                target_role = to_lower_safe(role_name)
+                # Önce tam eşleşme
+                for r in all_roles:
+                    if to_lower_safe(r.name) == target_role:
+                        role_id = r.id
+                        break
+                # Tam bulamazsa kelime içinde geçiyor mu diye bak
+                if not role_id:
+                    for r in all_roles:
+                        if target_role in to_lower_safe(r.name):
+                            role_id = r.id
+                            break
+            
+            # 4. VAR OLAN KULLANICIYI ATLAMAK YERİNE "GÜNCELLE"
+            existing = db.query(UserDB).filter(UserDB.email == email).first()
+            if existing:
+                existing.role_id = role_id # Eski rolü Excel'deki yeni rolle değiştir
+                if company_str: existing.company = company_str
+                updated_count += 1
+            else:
+                new_user = UserDB(
+                    name=email.split('@')[0],
+                    email=email,
+                    password=get_password_hash(password),
+                    role="müşteri", 
+                    role_id=role_id,
+                    company=company_str,
+                    is_active=True
+                )
+                db.add(new_user)
+                added_count += 1
+            
+        db.commit()
+        return {"message": f"Sistem: {added_count} yeni kullanıcı eklendi, {updated_count} kullanıcı ise güncellendi."}
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Excel okuma hatası: Lütfen tablonuzu kontrol edin. Detay: {str(e)}")
+        
 @app.post("/api/login")
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(UserDB).filter(UserDB.email == payload.email).first()
@@ -264,7 +357,6 @@ def check_hierarchical_permission(item_path: str, allowed_folders: list) -> bool
         if '/'.join(parts[:i]) in allowed_map: return allowed_map['/'.join(parts[:i])] is True
     return False
 
-# 🌟 GÜNCELLEME: TEKİL DOSYALARI BOYUTU VE ÖNİZLEME LİNKİYLE AKTARAN MOTOR
 @app.get("/files")
 def get_files(path: str = "", db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     clean_p = clean_path(path)
@@ -273,7 +365,6 @@ def get_files(path: str = "", db: Session = Depends(get_db), current_user: UserD
 
     if current_user.role == "müşteri":
         if not allowed_folders: allowed_folders = current_user.allowed_folders or []
-        # Kök dizin (Home) oluşturulurken izin verilen tekil dosyaların link ve boyutunu dinamik süz
         if not clean_p:
             allowed_entries = [f for f in allowed_folders if f.get("allowed", True) is True]
             result = []
@@ -313,7 +404,6 @@ def get_files(path: str = "", db: Session = Depends(get_db), current_user: UserD
         result.append({"id": item_path, "name": name, "mimeType": mime_type, "size": item.get("Length", 0), "webViewLink": f"{cfg.get('BUNNY_PULL_ZONE_URL')}/{urllib.parse.quote(item_path, safe='/')}" if not is_dir else ""})
     return {"files": result}
 
-# RAM TABANLI HIZLI ARAMA MOTORU
 @app.get("/api/search")
 def search_files(query: str, current_user: UserDB = Depends(get_current_user)):
     global GLOBAL_FILE_INDEX, LAST_INDEX_TIME

@@ -37,7 +37,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios' // Eğer projedeki özel axios ayarını kullanıyorsan yolunu değiştirebilirsin (örn: import axios from '../api/axios')
+import axios from 'axios'
 
 const router = useRouter()
 const email = ref('')
@@ -49,9 +49,8 @@ const handleLogin = async () => {
   errorMessage.value = ''
   isLoading.value = true
   try {
-    // KESİN ÇÖZÜMÜN SIRRI BURASI: 
-    // IP adresini ve 8000 portunu sildik. Artık istek doğrudan sitenin çalıştığı yere bağıl (relative) gidecek.
-    const response = await axios.post('/api/login', {
+    // AdminView'daki gibi window.location.origin ekleyerek tam rotayı garantiye alıyoruz
+    const response = await axios.post(`${window.location.origin}/api/login`, {
       email: email.value.trim(),
       password: password.value
     })
@@ -60,10 +59,15 @@ const handleLogin = async () => {
     localStorage.setItem('loginTime', Date.now().toString())
     router.push('/dashboard')
   } catch (e) {
-    if (e.response && e.response.status === 403) {
-      errorMessage.value = 'Your account has been suspended. Please contact support.'
+    // BURASI ÖNEMLİ: Artık hata neyse onu ekranda göreceğiz
+    if (e.response) {
+      if (e.response.status === 401 || e.response.status === 403) {
+         errorMessage.value = e.response.data.detail || 'E-posta veya şifre hatalı.'
+      } else {
+         errorMessage.value = `Sistem Hatası (${e.response.status}): ${e.response.data.detail || 'Veritabanı bağlantı hatası.'}`
+      }
     } else {
-      errorMessage.value = 'Invalid email or password. Please try again.'
+      errorMessage.value = 'Sunucuya bağlanılamadı. Docker arka planda çalışıyor mu?'
     }
   } finally {
     isLoading.value = false

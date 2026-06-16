@@ -7,7 +7,7 @@
       </div>
 
       <div class="w-full lg:w-auto lg:flex-1 max-w-xl relative order-3 lg:order-2 lg:mx-8">
-        <input v-model="searchQuery" type="text" placeholder="Search entire secure cloud space..." class="w-full bg-transparent border-b border-slate-300 text-sm sm:text-base font-normal text-slate-800 placeholder-slate-400 pb-1.5 pr-8 focus:outline-none focus:border-slate-900 transition-colors rounded-none" />
+        <input v-model="searchQuery" type="text" placeholder="Search files" class="w-full bg-transparent border-b border-slate-300 text-sm sm:text-base font-normal text-slate-800 placeholder-slate-400 pb-1.5 pr-8 focus:outline-none focus:border-slate-900 transition-colors rounded-none" />
         <div class="absolute right-2 bottom-2 text-slate-900 pointer-events-none">
           <svg class="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
         </div>
