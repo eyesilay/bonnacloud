@@ -1,0 +1,15 @@
+services:
+  bonnacloud-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data  # 🛑 Hassas şirket veritabanı ve cdn ayarları asla silinmez, burada korunur.
+    environment:
+      # 🛡️ GÜVENLİK: Şirketinizin yeni ana admin şifresini buraya yazın (Örn: SirketGuv_2026!)
+      - BONNA_ADMIN_PASSWORD=admin
+      # 🛡️ GÜVENLİK: Dijital biletlerin güvenliği için buraya karmaşık harfler dizin
+      - BONNA_JWT_SECRET=9sA2bF81mK42pL90vXzQnWrTyUiOpAsDfGhJkL
+    restart: always
