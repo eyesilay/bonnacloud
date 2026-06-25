@@ -32,10 +32,25 @@ const router = createRouter({
   ]
 })
 
-// 🛡️ KİLİT MEKANİZMASI (ROUTE GUARD)
+// KİLİT VE OTOMATİK ÇIKIŞ MEKANİZMASI (ROUTE GUARD)
 router.beforeEach((to, from, next) => {
-  // Giriş bilgisini tarayıcı hafızasından çekiyoruz
+  // Giriş bilgilerini ve giriş zamanını tarayıcı hafızasından çekiyoruz
   const userSession = JSON.parse(localStorage.getItem('bonna_user_session') || 'null')
+  const loginTime = localStorage.getItem('loginTime')
+
+  // ⏱️ ÖN YÜZ OTOMATİK LOGOUT DENETİMİ
+  // Arka uçtaki 180 dakikalık (3 saat) süre sınırını burada kontrol ediyoruz.
+  if (userSession && loginTime) {
+    const timePassed = Date.now() - parseInt(loginTime)
+    const expireLimit = 1 * 60 * 1000 // 180 dakika milisaniye cinsinden (3 Saat)
+
+    if (timePassed > expireLimit) {
+      // 3 saat dolduysa oturum verilerini temizle ve login sayfasına fırlat
+      localStorage.removeItem('bonna_user_session')
+      localStorage.removeItem('loginTime')
+      return next('/login')
+    }
+  }
 
   // Durum 1: Sayfa giriş gerektiriyor ama kullanıcı giriş yapmamış
   if (to.meta.requiresAuth && !userSession) {

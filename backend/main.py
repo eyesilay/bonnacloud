@@ -5,7 +5,6 @@ import zipfile
 import mimetypes
 import urllib.parse
 import requests
-import csv
 import openpyxl
 from typing import List, Optional
 from datetime import datetime, timedelta
@@ -24,7 +23,7 @@ import bcrypt
 from database import SessionLocal, UserDB, RoleDB, Base, engine
 
 # =========================================================
-# 🛡️ VERİTABANI ŞEMALARI
+# DATABASE SCHEMAS
 # =========================================================
 class RoleRequest(BaseModel):
     name: str
@@ -34,7 +33,7 @@ class UserCreateRequest(BaseModel):
     name: str
     email: str
     password: str
-    role: Optional[str] = "müşteri"
+    role: Optional[str] = "customer"
     role_id: Optional[int] = None
     company: Optional[str] = None
     isActive: bool = True
@@ -43,7 +42,7 @@ class UserUpdateRequest(BaseModel):
     name: str
     email: str
     password: Optional[str] = None
-    role: Optional[str] = "müşteri"
+    role: Optional[str] = "customer"
     role_id: Optional[int] = None
     company: Optional[str] = None
     isActive: bool = True
@@ -62,18 +61,17 @@ class CDNConfigUpdateRequest(BaseModel):
     region: str
 
 # =========================================================
-# ALTYAPI VE GÜVENLİK AYARLARI
+# INFRASTRUCTURE & SECURITY CONFIGURATION
 # =========================================================
 os.makedirs("/app/data", exist_ok=True)
 Base.metadata.create_all(bind=engine)
 
 SECRET_KEY = os.getenv("BONNA_JWT_SECRET", "bonna-secure-dynamic-node-crypto-key-2026")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 180 
+ACCESS_TOKEN_EXPIRE_MINUTES = 720 # 12-Hour Absolute Expiry for Shift Rotation
 
 security_bearer = HTTPBearer()
 
-# ⚡ LIGHTNING CACHE ENGINE STATS (RAM Önbellek Yapısı)
 GLOBAL_FILE_INDEX = []
 LAST_INDEX_TIME = None
 CACHE_DURATION_MINUTES = 5
@@ -101,12 +99,12 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Security(securi
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
-        if email is None: raise HTTPException(status_code=401, detail="Geçersiz oturum anahtarı.")
-    except JWTError: raise HTTPException(status_code=401, detail="Oturum doğrulaması başarısız.")
+        if email is None: raise HTTPException(status_code=401, detail="Invalid session token.")
+    except JWTError: raise HTTPException(status_code=401, detail="Session verification failed.")
     
     user = db.query(UserDB).filter(UserDB.email == email).first()
-    if not user: raise HTTPException(status_code=401, detail="Kullanıcı sistemde bulunamadı.")
-    if not user.is_active: raise HTTPException(status_code=403, detail="Hesabınız dondurulmuştur.")
+    if not user: raise HTTPException(status_code=401, detail="User not found in system.")
+    if not user.is_active: raise HTTPException(status_code=403, detail="Your account has been suspended.")
     return user
 
 def init_db():
@@ -124,9 +122,9 @@ def init_db():
 
     db = SessionLocal()
     try:
-        admin_role = db.query(RoleDB).filter(RoleDB.name == "Yönetici (Admin)").first()
+        admin_role = db.query(RoleDB).filter(RoleDB.name == "Administrator").first()
         if not admin_role:
-            admin_role = RoleDB(name="Yönetici (Admin)", allowed_folders=[{"id": "", "name": "Tüm Sunucu", "allowed": True}])
+            admin_role = RoleDB(name="Administrator", allowed_folders=[{"id": "", "name": "Full Server", "allowed": True}])
             db.add(admin_role)
             db.commit()
             db.refresh(admin_role)
@@ -134,7 +132,7 @@ def init_db():
         admin = db.query(UserDB).filter(UserDB.role == "admin").first()
         if not admin:
             raw_password = os.getenv("BONNA_ADMIN_PASSWORD", "admin")
-            new_admin = UserDB(name="Sistem Yöneticisi", email="admin@bonnacloud.com", password=get_password_hash(raw_password), role="admin", role_id=admin_role.id, is_active=True)
+            new_admin = UserDB(name="System Administrator", email="admin@bonnacloud.com", password=get_password_hash(raw_password), role="admin", role_id=admin_role.id, is_active=True)
             db.add(new_admin)
             db.commit()
         elif admin and not admin.role_id:
@@ -173,180 +171,137 @@ def clean_path(p: str) -> str:
 # ROLE API
 @app.get("/api/roles")
 def get_roles(db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Yetkiniz yok.")
+    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
     return [{"id": r.id, "name": r.name, "allowedFolders": r.allowed_folders or []} for r in db.query(RoleDB).all()]
 
 @app.post("/api/roles")
 def create_role(payload: RoleRequest, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Yetkiniz yok.")
-    if db.query(RoleDB).filter(RoleDB.name == payload.name).first(): raise HTTPException(status_code=400, detail="Bu isimde bir rol zaten mevcut.")
+    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
+    if db.query(RoleDB).filter(RoleDB.name == payload.name).first(): raise HTTPException(status_code=400, detail="A role with this name already exists.")
     db.add(RoleDB(name=payload.name, allowed_folders=payload.allowedFolders))
     db.commit()
-    return {"message": "Rol başarıyla oluşturuldu."}
+    return {"message": "Role successfully created."}
 
 @app.put("/api/roles/{role_id}")
 def update_role(role_id: int, payload: RoleRequest, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Yetkiniz yok.")
+    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
     role = db.query(RoleDB).filter(RoleDB.id == role_id).first()
-    if not role: raise HTTPException(status_code=404, detail="Rol bulunamadı.")
+    if not role: raise HTTPException(status_code=404, detail="Role not found.")
     role.name = payload.name; role.allowed_folders = payload.allowedFolders
     db.commit()
-    return {"message": "Rol başarıyla güncellendi."}
+    return {"message": "Role successfully updated."}
 
 @app.delete("/api/roles/{role_id}")
 def delete_role(role_id: int, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Yetkiniz yok.")
+    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
     role = db.query(RoleDB).filter(RoleDB.id == role_id).first()
-    if not role: raise HTTPException(status_code=404, detail="Rol bulunamadı.")
+    if not role: raise HTTPException(status_code=404, detail="Role not found.")
     db.query(UserDB).filter(UserDB.role_id == role_id).update({UserDB.role_id: None})
     db.delete(role)
     db.commit()
-    return {"message": "Rol başarıyla silindi."}
+    return {"message": "Role successfully deleted."}
 
-# KULLANICI API
+# USER API
 @app.get("/api/users")
 def get_users(db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Yetkiniz yok.")
-    return [{"id": u.id, "name": u.name, "email": u.email, "role_id": u.role_id, "role_name": u.role_rel.name if u.role_rel else "Rol Atanmamış", "company": u.company, "isActive": u.is_active} for u in db.query(UserDB).all()]
+    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
+    return [{"id": u.id, "name": u.name, "email": u.email, "role_id": u.role_id, "role_name": u.role_rel.name if u.role_rel else "No Role Assigned", "company": u.company, "isActive": u.is_active} for u in db.query(UserDB).all()]
 
 @app.post("/api/users")
 def create_user(payload: UserCreateRequest, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Yetkiniz yok.")
-    if db.query(UserDB).filter(UserDB.email == payload.email).first(): raise HTTPException(status_code=400, detail="Bu e-posta adresi kullanımda.")
+    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
+    if db.query(UserDB).filter(UserDB.email == payload.email).first(): raise HTTPException(status_code=400, detail="This email address is already in use.")
     db.add(UserDB(name=payload.name, email=payload.email, password=get_password_hash(payload.password), role=payload.role, role_id=payload.role_id, company=payload.company, is_active=payload.isActive))
     db.commit()
-    return {"message": "Kullanıcı başarıyla oluşturuldu."}
+    return {"message": "User successfully created."}
 
 @app.put("/api/users/{user_id}")
 def update_user(user_id: int, payload: UserUpdateRequest, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Yetkiniz yok.")
+    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
     target_user = db.query(UserDB).filter(UserDB.id == user_id).first()
-    if not target_user: raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı.")
+    if not target_user: raise HTTPException(status_code=404, detail="User not found.")
     target_user.name = payload.name; target_user.email = payload.email; target_user.role_id = payload.role_id; target_user.company = payload.company; target_user.is_active = payload.isActive
     if payload.password: target_user.password = get_password_hash(payload.password)
     db.commit()
-    return {"message": "Kullanıcı başarıyla güncellendi."}
+    return {"message": "User successfully updated."}
 
 @app.delete("/api/users/{user_id}")
 def delete_user(user_id: int, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Yetkiniz yok.")
+    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
     target_user = db.query(UserDB).filter(UserDB.id == user_id).first()
-    if not target_user: raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı.")
-    if target_user.id == current_user.id: raise HTTPException(status_code=400, detail="Kendi hesabınızı silemezsiniz.")
+    if not target_user: raise HTTPException(status_code=404, detail="User not found.")
+    if target_user.id == current_user.id: raise HTTPException(status_code=400, detail="You cannot delete your own account.")
     db.delete(target_user)
     db.commit()
-    return {"message": "Kullanıcı başarıyla silindi."}
+    return {"message": "User successfully deleted."}
 
 @app.post("/api/users/bulk")
 async def bulk_create_users(file: UploadFile = File(...), db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Yetkiniz yok.")
-    
+    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
     content = await file.read()
-    
     try:
         wb = openpyxl.load_workbook(filename=io.BytesIO(content), data_only=True)
         ws = wb.active
-        
-        # 1. Başlıkları tamamen küçük harfe çevir ve boşlukları sil
-        raw_headers = []
-        for cell in ws[1]:
-            val = str(cell.value).strip().lower() if cell.value is not None else ""
-            raw_headers.append(val)
-        
+        raw_headers = [str(cell.value).strip().lower() if cell.value is not None else "" for cell in ws[1]]
         all_roles = db.query(RoleDB).all()
-        
-        def to_lower_safe(text):
-            return str(text).replace('I', 'ı').replace('İ', 'i').strip().lower()
-        
+        def to_lower_safe(text): return str(text).replace('I', 'ı').replace('İ', 'i').strip().lower()
         added_count = 0
         updated_count = 0
-        
         for row in ws.iter_rows(min_row=2, values_only=True):
             row_data = dict(zip(raw_headers, row))
-            
-            email = None
-            password = None
-            role_name = None
-            company = None
-            
-            # 2. DİNAMİK SÜTUN ARAMA (Sütun adı ne olursa olsun affetmez yakalar)
+            email, password, role_name, company = None, None, None, None
             for key, val in row_data.items():
                 if val is None: continue
                 if "mail" in key: email = val
                 elif "pass" in key or "şifre" in key or "sifre" in key: password = val
                 elif "role" in key or "rol" in key: role_name = val
                 elif "company" in key or "şirket" in key or "sirket" in key: company = val
-            
             if not email or not password: continue
-            
             email = str(email).strip()
             password = str(password).strip()
             company_str = str(company).strip() if company is not None else None
-            
-            # 3. AKILLI ROL EŞLEŞTİRME (Tam veya Kısmi Eşleşme)
             role_id = None
             if role_name is not None and str(role_name).strip() != "":
                 target_role = to_lower_safe(role_name)
-                # Önce tam eşleşme
                 for r in all_roles:
-                    if to_lower_safe(r.name) == target_role:
-                        role_id = r.id
-                        break
-                # Tam bulamazsa kelime içinde geçiyor mu diye bak
+                    if to_lower_safe(r.name) == target_role: role_id = r.id; break
                 if not role_id:
                     for r in all_roles:
-                        if target_role in to_lower_safe(r.name):
-                            role_id = r.id
-                            break
-            
-            # 4. VAR OLAN KULLANICIYI ATLAMAK YERİNE "GÜNCELLE"
+                        if target_role in to_lower_safe(r.name): role_id = r.id; break
             existing = db.query(UserDB).filter(UserDB.email == email).first()
             if existing:
-                existing.role_id = role_id # Eski rolü Excel'deki yeni rolle değiştir
+                existing.role_id = role_id
                 if company_str: existing.company = company_str
                 updated_count += 1
             else:
-                new_user = UserDB(
-                    name=email.split('@')[0],
-                    email=email,
-                    password=get_password_hash(password),
-                    role="müşteri", 
-                    role_id=role_id,
-                    company=company_str,
-                    is_active=True
-                )
-                db.add(new_user)
+                db.add(UserDB(name=email.split('@')[0], email=email, password=get_password_hash(password), role="customer", role_id=role_id, company=company_str, is_active=True))
                 added_count += 1
-            
         db.commit()
-        return {"message": f"Sistem: {added_count} yeni kullanıcı eklendi, {updated_count} kullanıcı ise güncellendi."}
-        
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Excel okuma hatası: Lütfen tablonuzu kontrol edin. Detay: {str(e)}")
-        
+        return {"message": f"System: {added_count} new users added, {updated_count} users successfully updated."}
+    except Exception as e: raise HTTPException(status_code=400, detail=f"Excel processing error: {str(e)}")
+
 @app.post("/api/login")
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(UserDB).filter(UserDB.email == payload.email).first()
-    if not user or not user.is_active: raise HTTPException(status_code=401, detail="Giriş başarısız.")
-    if not verify_password(payload.password, user.password): raise HTTPException(status_code=401, detail="Giriş başarısız.")
+    if not user or not user.is_active: raise HTTPException(status_code=401, detail="Login credentials verification failed.")
+    if not verify_password(payload.password, user.password): raise HTTPException(status_code=401, detail="Login credentials verification failed.")
     token = create_access_token(data={"sub": user.email, "role": user.role}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    return {"id": user.id, "name": user.name or "Sistem Yöneticisi", "email": user.email, "role": user.role, "role_id": user.role_id, "allowedFolders": user.allowed_folders if user.allowed_folders else [], "isActive": user.is_active, "token": token}
+    return {"id": user.id, "name": user.name or "System Administrator", "email": user.email, "role": user.role, "role_id": user.role_id, "allowedFolders": user.allowed_folders if user.allowed_folders else [], "isActive": user.is_active, "token": token}
 
 @app.get("/api/cdn")
 def get_cdn_settings(current_user: UserDB = Depends(get_current_user)):
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Yetkiniz yok.")
+    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
     cfg = load_cdn_config()
     return {"storageName": cfg.get("BUNNY_STORAGE_NAME"), "storagePassword": cfg.get("BUNNY_STORAGE_PASSWORD"), "pullZoneUrl": cfg.get("BUNNY_PULL_ZONE_URL"), "region": cfg.get("BUNNY_REGION")}
 
 @app.post("/api/cdn")
 def update_cdn_settings(payload: CDNConfigUpdateRequest, current_user: UserDB = Depends(get_current_user)):
     global LAST_INDEX_TIME
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Yetkiniz yok.")
+    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
     save_cdn_config({"BUNNY_STORAGE_NAME": payload.storageName, "BUNNY_STORAGE_PASSWORD": payload.storagePassword, "BUNNY_PULL_ZONE_URL": payload.pullZoneUrl, "BUNNY_REGION": payload.region})
     LAST_INDEX_TIME = None 
-    return {"message": "CDN ayarları başarıyla güncellendi."}
+    return {"message": "CDN configuration node successfully updated."}
 
-# PERMISSION SYSTEM
 def check_hierarchical_permission(item_path: str, allowed_folders: list) -> bool:
     path_clean = clean_path(item_path)
     if not path_clean: return True
@@ -362,8 +317,7 @@ def get_files(path: str = "", db: Session = Depends(get_db), current_user: UserD
     clean_p = clean_path(path)
     cfg = load_cdn_config()
     allowed_folders = current_user.role_rel.allowed_folders if current_user.role_rel else []
-
-    if current_user.role == "müşteri":
+    if current_user.role == "customer":
         if not allowed_folders: allowed_folders = current_user.allowed_folders or []
         if not clean_p:
             allowed_entries = [f for f in allowed_folders if f.get("allowed", True) is True]
@@ -372,40 +326,28 @@ def get_files(path: str = "", db: Session = Depends(get_db), current_user: UserD
                 m_type = f.get("mimeType", "application/vnd.google-apps.folder")
                 is_dir = (m_type == "application/vnd.google-apps.folder")
                 item_path = clean_path(f.get("id", ""))
-                
-                web_link = ""
-                if not is_dir:
-                    web_link = f"{cfg.get('BUNNY_PULL_ZONE_URL')}/{urllib.parse.quote(item_path, safe='/')}"
-                    
-                result.append({
-                    "id": item_path,
-                    "name": f.get("name"),
-                    "mimeType": m_type,
-                    "size": f.get("size", 0),
-                    "webViewLink": web_link
-                })
+                result.append({"id": item_path, "name": f.get("name"), "mimeType": m_type, "size": f.get("size", 0), "webViewLink": "" if is_dir else f"{cfg.get('BUNNY_PULL_ZONE_URL')}/{urllib.parse.quote(item_path, safe='/')}"})
             return {"files": result}
-        if not check_hierarchical_permission(clean_p, allowed_folders): return {"error": "Erişim izni yok.", "files": []}
+        if not check_hierarchical_permission(clean_p, allowed_folders): return {"error": "Access denied to this storage layer.", "files": []}
 
     quoted_p = urllib.parse.quote(clean_p, safe='/')
     url = f"{get_bunny_base_url()}/{quoted_p}/" if quoted_p else f"{get_bunny_base_url()}/"
     try:
         resp = requests.get(url, headers={"AccessKey": cfg.get("BUNNY_STORAGE_PASSWORD"), "accept": "application/json"}, timeout=15)
         if resp.status_code != 200: return {"files": []}
-    except: raise HTTPException(status_code=502, detail="CDN Hatası.")
-
+    except: raise HTTPException(status_code=502, detail="CDN storage gateway link failure.")
     result = []
     for item in resp.json():
         is_dir = item.get("IsDirectory", False)
         name = item.get("ObjectName")
         item_path = f"{clean_p}/{name}" if clean_p else name
-        if current_user.role == "müşteri" and not check_hierarchical_permission(item_path, allowed_folders): continue
+        if current_user.role == "customer" and not check_hierarchical_permission(item_path, allowed_folders): continue
         mime_type = "application/vnd.google-apps.folder" if is_dir else (mimetypes.guess_type(name)[0] or "application/octet-stream")
         result.append({"id": item_path, "name": name, "mimeType": mime_type, "size": item.get("Length", 0), "webViewLink": f"{cfg.get('BUNNY_PULL_ZONE_URL')}/{urllib.parse.quote(item_path, safe='/')}" if not is_dir else ""})
     return {"files": result}
 
 @app.get("/api/search")
-def search_files(query: str, current_user: UserDB = Depends(get_current_user)):
+def search_files(query: str, current_user: UserDB = Depends(get_db), current_user_obj: UserDB = Depends(get_current_user)):
     global GLOBAL_FILE_INDEX, LAST_INDEX_TIME
     now = datetime.utcnow()
     if not LAST_INDEX_TIME or (now - LAST_INDEX_TIME) > timedelta(minutes=CACHE_DURATION_MINUTES):
@@ -415,7 +357,6 @@ def search_files(query: str, current_user: UserDB = Depends(get_current_user)):
         compiled_list = []
         queue = [""]
         folders_scanned = 0
-
         while queue and folders_scanned < 85:
             current_path = queue.pop(0)
             folders_scanned += 1
@@ -436,15 +377,14 @@ def search_files(query: str, current_user: UserDB = Depends(get_current_user)):
 
     result_list = []
     query_lower = query.lower()
-    allowed_folders = current_user.role_rel.allowed_folders if current_user.role_rel else []
-    if not allowed_folders: allowed_folders = current_user.allowed_folders or []
-
+    allowed_folders = current_user_obj.role_rel.allowed_folders if current_user_obj.role_rel else []
+    if not allowed_folders: allowed_folders = current_user_obj.allowed_folders or []
     for item in GLOBAL_FILE_INDEX:
         item_path = item["id"]
         name = item["name"]
-        if current_user.role == "müşteri" and not check_hierarchical_permission(item_path, allowed_folders): continue
+        if current_user_obj.role == "customer" and not check_hierarchical_permission(item_path, allowed_folders): continue
         if query_lower in name.lower():
-            if current_user.role == "müşteri":
+            if current_user_obj.role == "customer":
                 if not any(item_path == clean_path(f.get("id", "")) or item_path.startswith(clean_path(f.get("id", "")) + "/") for f in allowed_folders): continue
             result_list.append(item)
     return {"files": result_list}
@@ -455,9 +395,9 @@ def download_file(path: str, current_user: UserDB = Depends(get_current_user)):
     url = f"{get_bunny_base_url()}/{urllib.parse.quote(clean_path(path), safe='/')}"
     try:
         resp = requests.get(url, headers={"AccessKey": cfg.get("BUNNY_STORAGE_PASSWORD")}, stream=True)
-        if resp.status_code != 200: raise HTTPException(status_code=404, detail="Bulunamadı.")
+        if resp.status_code != 200: raise HTTPException(status_code=404, detail="Requested object not found.")
         return StreamingResponse(resp.iter_content(chunk_size=8192), media_type=resp.headers.get("Content-Type", "application/octet-stream"), headers={"Content-Disposition": f"attachment; filename={urllib.parse.quote(path.split('/')[-1])}"})
-    except: raise HTTPException(status_code=502, detail="CDN Hatası.")
+    except: raise HTTPException(status_code=502, detail="CDN network streaming error.")
 
 @app.post("/download/zip")
 def download_zip(payload: ZipDownloadRequest, current_user: UserDB = Depends(get_current_user)):
@@ -476,7 +416,7 @@ def download_zip(payload: ZipDownloadRequest, current_user: UserDB = Depends(get
 if os.path.isdir("dist"): app.mount("/assets", StaticFiles(directory="dist/assets"), name="assets")
 @app.get("/{full_path:path}")
 async def serve_spa(full_path: str):
-    if full_path.startswith("api/") or full_path == "files" or full_path.startswith("download/"): return JSONResponse(status_code=404, content={"detail": "API yok"})
+    if full_path.startswith("api/") or full_path == "files" or full_path.startswith("download/"): return JSONResponse(status_code=404, content={"detail": "API endpoint not found"})
     index_path = os.path.join("dist", "index.html")
     if os.path.exists(index_path): return FileResponse(index_path)
-    return JSONResponse(status_code=404, content={"detail": "SPA Yok"})
+    return JSONResponse(status_code=404, content={"detail": "SPA Distribution Layer Missing"})

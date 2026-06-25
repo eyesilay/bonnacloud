@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --color-primary: #e1ccba;     /* Yeni Asil Bonna Beji */
-  --color-secondary: #F8FAFC;   /* Soft Arka Plan */
-  --color-accent: #D4AF37;      /* Detay Altın Sarısı */
+  --color-primary: #e1ccba;
+  --color-secondary: #F8FAFC;
+  --color-accent: #D4AF37;
 }

@@ -25,7 +25,7 @@ class UserDB(Base):
     password = Column(String)
     role = Column(String, default="müşteri") # Eski sürümlerle uyumluluk için (admin, müşteri vb.)
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=True) # Yeni dinamik rol bağlantısı
-    company = Column(String, nullable=True) # YENİ EKLENEN ŞİRKET ALANI
+    company = Column(String, nullable=True)
     allowed_folders = Column(JSON, default=[]) # Bireysel özel yetki verilmek istenirse (yedek kalkan)
     is_active = Column(Boolean, default=True)
     failed_login_attempts = Column(Integer, default=0)

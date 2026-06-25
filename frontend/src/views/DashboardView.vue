@@ -7,7 +7,7 @@
       </div>
 
       <div class="w-full lg:w-auto lg:flex-1 max-w-xl relative order-3 lg:order-2 lg:mx-8">
-        <input v-model="searchQuery" type="text" placeholder="Search files" class="w-full bg-transparent border-b border-slate-300 text-sm sm:text-base font-normal text-slate-800 placeholder-slate-400 pb-1.5 pr-8 focus:outline-none focus:border-slate-900 transition-colors rounded-none" />
+        <input v-model="searchQuery" type="text" placeholder="Search entire secure cloud space..." class="w-full bg-transparent border-b border-slate-300 text-sm sm:text-base font-normal text-slate-800 placeholder-slate-400 pb-1.5 pr-8 focus:outline-none focus:border-slate-900 transition-colors rounded-none" />
         <div class="absolute right-2 bottom-2 text-slate-900 pointer-events-none">
           <svg class="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
         </div>
@@ -142,7 +142,7 @@
               </div>
 
               <svg v-else-if="isWord(item.name)" class="w-10 h-10 sm:w-14 sm:h-14" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
+                <path d="M110 60H240/L290M110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/><path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
                 <path d="M240 60V110H290L240 60Z" fill="black"/>
                 <rect x="70" y="190" width="260" height="85" fill="#345a9a"/>
                 <text x="200" y="250" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" font-size="46" fill="white" text-anchor="middle" letter-spacing="0.5">DOCX</text>
@@ -176,7 +176,7 @@
             </div>
             
             <div class="w-full">
-              <h3 class="text-[10px] sm:text-[11px] font-bold text-slate-700 truncate px-0.5 group-hover:text-slate-950 transition-colors">{{ item.name }}</h3>
+              <h3 class="text-[10px] sm:text-[11px] font-bold text-slate-700 truncate px-0.5 group-hover:text-blue-600 transition-colors">{{ item.name }}</h3>
               <p v-if="item.mimeType !== 'application/vnd.google-apps.folder'" class="text-[8px] sm:text-[9px] text-slate-400 mt-0.5 font-bold tracking-wider uppercase">
                 {{ formatSize(item.size) }}
               </p>
@@ -189,27 +189,27 @@
           <table class="min-w-full divide-y divide-slate-100 text-left text-sm">
             <thead>
               <tr class="text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/70">
-                <th scope="col" class="pl-4 sm:pl-5 pr-0 py-2 w-8 sm:w-10 rounded-l-xl">
+                <th scope="col" class="pl-4 py-2 w-8 rounded-l-xl">
                   <div @click="toggleSelectAll" class="w-3.5 h-3.5 rounded border border-slate-300 bg-white flex items-center justify-center cursor-pointer" :class="{'bg-theme-primary border-theme-primary': isAllSelected && downloadableItems.length > 0}">
-                    <svg v-if="isAllSelected && downloadableItems.length > 0" class="w-2.5 h-2.5 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    <svg v-if="isAllSelected" class="w-2.5 h-2.5 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
                   </div>
                 </th>
                 
-                <th scope="col" class="pl-2 pr-4 py-2 cursor-pointer select-none hover:text-slate-600 transition-colors group" @click="handleSort('name')">
+                <th scope="col" class="pl-2 pr-4 py-2 cursor-pointer select-none hover:text-slate-600 group" @click="handleSort('name')">
                   <div class="flex items-center gap-1">
                     File Name
                     <span :class="sortBy === 'name' ? 'text-slate-800' : 'text-slate-300 group-hover:text-slate-400 transition-colors'">
-                      <svg v-if="sortBy === 'name' && sortOrder === 'desc'" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+                      <svg v-if="sortBy === 'name' && sortOrder === 'asc'" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" v-else><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7"/></svg>
                     </span>
                   </div>
                 </th>
 
-                <th scope="col" class="px-3 py-2 w-24 cursor-pointer select-none hover:text-slate-600 transition-colors group hidden sm:table-cell" @click="handleSort('size')">
+                <th scope="col" class="px-3 py-2 w-24 cursor-pointer select-none hover:text-slate-600 group hidden sm:table-cell" @click="handleSort('size')">
                   <div class="flex items-center gap-1">
                     Size
                     <span :class="sortBy === 'size' ? 'text-slate-800' : 'text-slate-300 group-hover:text-slate-400 transition-colors'">
-                      <svg v-if="sortBy === 'size' && sortOrder === 'desc'" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+                      <svg v-if="sortBy === 'size' && sortOrder === 'asc'" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" v-else><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7"/></svg>
                     </span>
                   </div>
@@ -229,9 +229,7 @@
                 </td>
                 <td class="pl-2 pr-4 py-1.5 font-semibold text-slate-700 whitespace-nowrap flex items-center gap-2.5 sm:gap-3">
                   <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-md overflow-hidden flex items-center justify-center shrink-0 border border-slate-100 bg-white relative">
-                    
                     <svg v-if="item.mimeType === 'application/vnd.google-apps.folder'" class="w-4 h-4 sm:w-5 sm:h-5 text-theme-primary fill-current" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
-                    
                     <img v-else-if="isImage(item.name)" :src="getPreviewUrl(item, 'list')" class="w-full h-full object-cover" />
                     
                     <div v-else-if="isVideo(item.name)" class="w-full h-full relative flex items-center justify-center bg-slate-100">
@@ -272,7 +270,7 @@
                     <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" v-else><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                   </div>
                   <div class="flex flex-col">
-                     <span class="truncate text-[11px] sm:text-xs font-bold text-slate-800 max-w-[150px] sm:max-w-md">{{ item.name }}</span>
+                     <span class="truncate text-[11px] sm:text-xs font-bold text-slate-800 max-w-[150px] sm:max-w-md group-hover:text-blue-600 transition-colors">{{ item.name }}</span>
                      <span v-if="item.mimeType !== 'application/vnd.google-apps.folder'" class="text-[9px] text-slate-400 sm:hidden mt-0.5">{{ formatSize(item.size) }}</span>
                   </div>
                 </td>
@@ -285,7 +283,7 @@
                 </td>
                 <td class="px-2 py-1.5 text-center">
                   <button v-if="item.mimeType !== 'application/vnd.google-apps.folder'" @click.stop="downloadItem(item)" :disabled="downloadingItemId === item.id" class="inline-flex items-center justify-center p-1 bg-white border border-slate-200 rounded-md shadow-sm">
-                    <svg v-if="downloadingItemId === item.id" class="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    <svg v-if="downloadingItemId === item.id" class="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2a8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" v-else><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                   </button>
                 </td>
@@ -632,7 +630,9 @@ const toggleSelection = (item) => {
 const toggleSelectAll = () => { isAllSelected.value ? clearSelection() : selectedItems.value = [...downloadableItems.value] }
 const clearSelection = () => selectedItems.value = []
 
+// 🌟 GÜNCELLEME: Tekli indirmede indirme kalkanı aktiftir
 const downloadSingleFile = async (fileItem) => {
+  window.__bonna_download_active = true 
   try {
     const response = await axios.get(`${API_BASE}/download/file?path=${encodeURIComponent(fileItem.id)}`, { responseType: 'blob' })
     const url = window.URL.createObjectURL(new Blob([response.data]))
@@ -645,11 +645,15 @@ const downloadSingleFile = async (fileItem) => {
     window.URL.revokeObjectURL(url)
   } catch (error) {
     console.error("Download error:", error)
+  } finally {
+    window.__bonna_download_active = false 
   }
 }
 
+// 🌟 GÜNCELLEME: Toplu ZIP indirmelerinde indirme kalkanı aktiftir
 const downloadZip = async (targets) => {
   isDownloading.value = true
+  window.__bonna_download_active = true 
   try {
     const response = await axios.post(`${API_BASE}/download/zip`, { 
       paths: targets.map(i => i.id)
@@ -663,7 +667,10 @@ const downloadZip = async (targets) => {
     link.remove()
   } catch (error) {
     console.error("Zip creation error:", error)
-  } finally { isDownloading.value = false }
+  } finally { 
+    isDownloading.value = false 
+    window.__bonna_download_active = false 
+  }
 }
 
 const downloadItem = async (item) => {

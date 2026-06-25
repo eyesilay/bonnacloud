@@ -3,13 +3,13 @@
     <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm select-none">
       <div class="flex items-center gap-4 cursor-pointer" @click="router.push('/dashboard')">
         <img src="https://bonna-website.b-cdn.net/bonnacloud-assets/BonnaCloud-Logo.png" alt="Bonna Cloud Logo" class="h-8 w-auto object-contain" />
-        <h1 class="text-base font-black tracking-tight text-slate-900 border-l border-slate-200 pl-4">Admin Panel</h1>
+        <h1 class="text-base font-black tracking-tight text-slate-900 border-l border-slate-200 pl-4">Control Center</h1>
       </div>
       
       <div class="flex gap-2 border border-slate-200 p-0.5 bg-slate-100 rounded-xl">
         <button @click="activeTab = 'users'" :class="activeTab === 'users' ? 'bg-white text-slate-900 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-900'" class="px-4 py-1.5 rounded-lg text-xs transition-all">Users Control</button>
-        <button @click="activeTab = 'roles'" :class="activeTab === 'roles' ? 'bg-white text-slate-900 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-900'" class="px-4 py-1.5 rounded-lg text-xs transition-all">Roles</button>
-        <button @click="activeTab = 'cdn'" :class="activeTab === 'cdn' ? 'bg-white text-slate-900 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-900'" class="px-4 py-1.5 rounded-lg text-xs transition-all">CDN Config</button>
+        <button @click="activeTab = 'roles'" :class="activeTab === 'roles' ? 'bg-white text-slate-900 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-900'" class="px-4 py-1.5 rounded-lg text-xs transition-all">Roles & Permissions</button>
+        <button @click="activeTab = 'cdn'" :class="activeTab === 'cdn' ? 'bg-white text-slate-900 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-900'" class="px-4 py-1.5 rounded-lg text-xs transition-all">CDN Engine</button>
       </div>
     </header>
 
@@ -17,7 +17,7 @@
       <section v-if="activeTab === 'users'" class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
         <div class="flex justify-between items-center mb-6">
           <div>
-            <h2 class="text-base font-black text-slate-900">User List</h2>
+            <h2 class="text-base font-black text-slate-900">User Master List</h2>
             <p class="text-xs text-slate-400 font-medium mt-0.5">Manage corporate credentials and assign access roles.</p>
           </div>
           <div class="flex gap-2">
@@ -39,9 +39,9 @@
                   <input type="checkbox" @change="toggleAllUsers" :checked="selectedUsers.length === users.length && users.length > 0" class="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-0 cursor-pointer" />
                 </th>
                 <th class="px-4 py-3">Full Name</th>
-                <th class="px-4 py-3">Email Address</th>
                 <th class="px-4 py-3">Company</th>
-                <th class="px-4 py-3">Role</th>
+                <th class="px-4 py-3">Email Address</th>
+                <th class="px-4 py-3">Inherited Access Role</th>
                 <th class="px-4 py-3">Status</th>
                 <th class="px-4 py-3 rounded-r-xl w-24 text-center">Actions</th>
               </tr>
@@ -73,8 +73,8 @@
       <section v-if="activeTab === 'roles'" class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
         <div class="flex justify-between items-center mb-6">
           <div>
-            <h2 class="text-base font-black text-slate-900">Roles Authorization</h2>
-            <p class="text-xs text-slate-400 font-medium mt-0.5">Define corporate roles.</p>
+            <h2 class="text-base font-black text-slate-900">Roles & Directory Authorization Engine</h2>
+            <p class="text-xs text-slate-400 font-medium mt-0.5">Define corporate roles and set Bunny CDN directory access rules globally.</p>
           </div>
           <button @click="openRoleModal(null)" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95">+ Add New Role</button>
         </div>
@@ -104,7 +104,7 @@
       </section>
 
       <section v-if="activeTab === 'cdn'" class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 max-w-xl mx-auto">
-        <h2 class="text-base font-black text-slate-900 mb-1">Bunny.net CDN Configuration</h2>
+        <h2 class="text-base font-black text-slate-900 mb-1">Bunny.net CDN Node Configuration</h2>
         <p class="text-xs text-slate-400 font-medium mb-6">Link global cloud storage layers directly to the platform backend safely.</p>
         <form @submit.prevent="saveCdnSettings" class="space-y-4 text-xs font-bold">
           <div>
@@ -123,7 +123,7 @@
             <label class="block text-slate-600 mb-1.5">Storage Main Region Prefix (Optional)</label>
             <input v-model="cdnForm.region" type="text" placeholder="e.g. ny, sg, se (leave blank for Europe/Falkenstein)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-medium focus:outline-none focus:border-slate-900 focus:bg-white" />
           </div>
-          <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95">Confirm CDN Credentials</button>
+          <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95">Commit CDN Updates</button>
         </form>
       </section>
     </main>
@@ -217,7 +217,7 @@
         
         <div class="flex justify-end gap-2 mt-3 border-t border-slate-100 pt-3 shrink-0">
           <button @click="showRoleModal = false" class="px-4 py-2 border border-slate-200 bg-white rounded-xl text-slate-700">Cancel</button>
-          <button @click="saveRole" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl">Confirm</button>
+          <button @click="saveRole" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl">Commit Changes</button>
         </div>
       </div>
     </div>
@@ -225,7 +225,7 @@
     <div v-if="showUserModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showUserModal = false"></div>
       <div class="relative bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 z-10 text-xs font-bold">
-        <h3 class="text-sm font-black text-slate-900 mb-4">{{ userForm.id ? 'Modify System Credentials' : 'Create New Member' }}</h3>
+        <h3 class="text-sm font-black text-slate-900 mb-4">{{ userForm.id ? 'Modify System Credentials' : 'Register New Secure Member' }}</h3>
         <div class="space-y-4">
           <div>
             <label class="block text-slate-600 mb-1.5">User Full Name</label>
@@ -236,16 +236,16 @@
             <input v-model="userForm.email" type="email" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-medium focus:outline-none focus:border-slate-900 focus:bg-white" />
           </div>
           <div>
-            <label class="block text-slate-600 mb-1.5">Password {{ userForm.id ? '(Leave blank to keep same)' : '' }}</label>
+            <label class="block text-slate-600 mb-1.5">Account Password {{ userForm.id ? '(Leave blank to keep same)' : '' }}</label>
             <input v-model="userForm.password" type="password" :required="!userForm.id" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-medium focus:outline-none focus:border-slate-900 focus:bg-white" />
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-slate-600 mb-1.5">Company</label>
-              <input v-model="userForm.company" type="text" placeholder="e.g. Bonna" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-medium focus:outline-none focus:border-slate-900 focus:bg-white" />
+              <label class="block text-slate-600 mb-1.5">Company / Organization</label>
+              <input v-model="userForm.company" type="text" placeholder="e.g. Bonna, Bayi A" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-medium focus:outline-none focus:border-slate-900 focus:bg-white" />
             </div>
             <div>
-              <label class="block text-slate-600 mb-1.5">Role</label>
+              <label class="block text-slate-600 mb-1.5">Assign Access Role</label>
               <select v-model="userForm.role_id" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-blue-700 focus:outline-none focus:border-slate-900 focus:bg-white">
                 <option :value="null">No Role (Access Denied)</option>
                 <option v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</option>
@@ -259,7 +259,7 @@
         </div>
         <div class="flex justify-end gap-2 mt-6 border-t border-slate-100 pt-4">
           <button @click="showUserModal = false" class="px-4 py-2 border border-slate-200 bg-white rounded-xl text-slate-700">Cancel</button>
-          <button @click="saveUser" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl">Confirm</button>
+          <button @click="saveUser" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl">Commit Credentials</button>
         </div>
       </div>
     </div>
@@ -267,28 +267,19 @@
     <div v-if="confirmDialog.isOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4 select-none">
       <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="cancelConfirm"></div>
       <div class="relative bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 z-10 text-center animate-fade-in border border-slate-100">
-        
         <div class="mx-auto flex items-center justify-center h-14 w-14 rounded-full mb-4 shadow-inner bg-amber-50 text-amber-500 border border-amber-100">
           <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
         </div>
-        
         <h3 class="text-lg font-black text-slate-900 mb-2">{{ confirmDialog.title }}</h3>
         <p class="text-sm text-slate-500 font-medium mb-8 leading-relaxed">{{ confirmDialog.message }}</p>
-        
         <div class="flex gap-3 justify-center w-full">
-          <button @click="cancelConfirm" class="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-sm active:scale-95">
-            No
-          </button>
-          <button @click="acceptConfirm" class="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-md active:scale-95">
-            Yes
-          </button>
+          <button @click="cancelConfirm" class="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-sm active:scale-95">No</button>
+          <button @click="acceptConfirm" class="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-md active:scale-95">Yes</button>
         </div>
       </div>
     </div>
 
-    <div v-if="toast.show" 
-         class="fixed bottom-10 left-1/2 transform -translate-x-1/2 px-5 py-3 rounded-xl shadow-2xl font-bold text-xs z-[150] flex items-center gap-2 border animate-fade-in transition-all" 
-         :class="toast.type === 'success' ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-red-500 text-white border-red-400'">
+    <div v-if="toast.show" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 px-5 py-3 rounded-xl shadow-2xl font-bold text-xs z-[150] flex items-center gap-2 border animate-fade-in transition-all" :class="toast.type === 'success' ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-red-500 text-white border-red-400'">
       <svg v-if="toast.type === 'success'" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
       <svg v-else class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
       {{ toast.message }}
@@ -323,9 +314,7 @@ const cdnForm = ref({ storageName: "", storagePassword: "", pullZoneUrl: "", reg
 const userForm = ref({ id: null, name: "", email: "", password: "", role_id: null, company: "", isActive: true })
 const roleForm = ref({ id: null, name: "", allowedFolders: [] })
 
-// ==========================================
 // TOAST (BİLGİ/HATA) YÖNETİMİ
-// ==========================================
 const toast = ref({ show: false, message: '', type: 'success' })
 let toastTimer = null
 
@@ -335,9 +324,7 @@ const triggerToast = (msg, type = 'success') => {
   toastTimer = setTimeout(() => { toast.value.show = false }, 4000)
 }
 
-// ==========================================
 // MERKEZİ ONAY (YES/NO) YÖNETİMİ
-// ==========================================
 const confirmDialog = ref({ isOpen: false, title: '', message: '', resolvePromise: null })
 
 const showConfirm = (title, message) => {
@@ -356,9 +343,7 @@ const cancelConfirm = () => {
   if (confirmDialog.value.resolvePromise) confirmDialog.value.resolvePromise(false)
 }
 
-// ==========================================
 // API İŞLEMLERİ
-// ==========================================
 const fetchAllData = async () => {
   try {
     const uResp = await axios.get(`${window.location.origin}/api/users`)
