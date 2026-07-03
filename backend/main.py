@@ -23,7 +23,7 @@ import bcrypt
 from database import SessionLocal, UserDB, RoleDB, Base, engine
 
 # =========================================================
-# DATABASE SCHEMAS
+# 🛡️ DATABASE SCHEMAS
 # =========================================================
 class RoleRequest(BaseModel):
     name: str
@@ -68,7 +68,6 @@ Base.metadata.create_all(bind=engine)
 
 SECRET_KEY = os.getenv("BONNA_JWT_SECRET", "bonna-secure-dynamic-node-crypto-key-2026")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 720 # 12-Hour Absolute Expiry for Shift Rotation
 
 security_bearer = HTTPBearer()
 
@@ -83,10 +82,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     try: return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
     except: return False
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+# 🌟 GÜNCELLEME: exp (expiry) parametresi tamamen kaldırıldı, token artık sonsuz ömürlü.
+def create_access_token(data: dict):
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
-    to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 def get_db():
@@ -268,13 +266,22 @@ async def bulk_create_users(file: UploadFile = File(...), db: Session = Depends(
                 if not role_id:
                     for r in all_roles:
                         if target_role in to_lower_safe(r.name): role_id = r.id; break
+            
+            is_admin_role = False
+            if role_id:
+                r_obj = db.query(RoleDB).filter(RoleDB.id == role_id).first()
+                if r_obj and "admin" in r_obj.name.lower():
+                    is_admin_role = True
+            text_role = "admin" if is_admin_role else "customer"
+
             existing = db.query(UserDB).filter(UserDB.email == email).first()
             if existing:
                 existing.role_id = role_id
+                existing.role = text_role 
                 if company_str: existing.company = company_str
                 updated_count += 1
             else:
-                db.add(UserDB(name=email.split('@')[0], email=email, password=get_password_hash(password), role="customer", role_id=role_id, company=company_str, is_active=True))
+                db.add(UserDB(name=email.split('@')[0], email=email, password=get_password_hash(password), role=text_role, role_id=role_id, company=company_str, is_active=True))
                 added_count += 1
         db.commit()
         return {"message": f"System: {added_count} new users added, {updated_count} users successfully updated."}
@@ -285,7 +292,9 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(UserDB).filter(UserDB.email == payload.email).first()
     if not user or not user.is_active: raise HTTPException(status_code=401, detail="Login credentials verification failed.")
     if not verify_password(payload.password, user.password): raise HTTPException(status_code=401, detail="Login credentials verification failed.")
-    token = create_access_token(data={"sub": user.email, "role": user.role}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    
+    # 🌟 GÜNCELLEME: Giriş esnasında artık zaman aşımı olmayan bir token üretiliyor.
+    token = create_access_token(data={"sub": user.email, "role": user.role})
     return {"id": user.id, "name": user.name or "System Administrator", "email": user.email, "role": user.role, "role_id": user.role_id, "allowedFolders": user.allowed_folders if user.allowed_folders else [], "isActive": user.is_active, "token": token}
 
 @app.get("/api/cdn")
@@ -317,7 +326,8 @@ def get_files(path: str = "", db: Session = Depends(get_db), current_user: UserD
     clean_p = clean_path(path)
     cfg = load_cdn_config()
     allowed_folders = current_user.role_rel.allowed_folders if current_user.role_rel else []
-    if current_user.role == "customer":
+    
+    if current_user.role in ["customer", "müşteri"]:
         if not allowed_folders: allowed_folders = current_user.allowed_folders or []
         if not clean_p:
             allowed_entries = [f for f in allowed_folders if f.get("allowed", True) is True]
@@ -341,7 +351,7 @@ def get_files(path: str = "", db: Session = Depends(get_db), current_user: UserD
         is_dir = item.get("IsDirectory", False)
         name = item.get("ObjectName")
         item_path = f"{clean_p}/{name}" if clean_p else name
-        if current_user.role == "customer" and not check_hierarchical_permission(item_path, allowed_folders): continue
+        if current_user.role in ["customer", "müşteri"] and not check_hierarchical_permission(item_path, allowed_folders): continue
         mime_type = "application/vnd.google-apps.folder" if is_dir else (mimetypes.guess_type(name)[0] or "application/octet-stream")
         result.append({"id": item_path, "name": name, "mimeType": mime_type, "size": item.get("Length", 0), "webViewLink": f"{cfg.get('BUNNY_PULL_ZONE_URL')}/{urllib.parse.quote(item_path, safe='/')}" if not is_dir else ""})
     return {"files": result}
@@ -382,9 +392,10 @@ def search_files(query: str, current_user: UserDB = Depends(get_db), current_use
     for item in GLOBAL_FILE_INDEX:
         item_path = item["id"]
         name = item["name"]
-        if current_user_obj.role == "customer" and not check_hierarchical_permission(item_path, allowed_folders): continue
+        
+        if current_user_obj.role in ["customer", "müşteri"] and not check_hierarchical_permission(item_path, allowed_folders): continue
         if query_lower in name.lower():
-            if current_user_obj.role == "customer":
+            if current_user_obj.role in ["customer", "müşteri"]:
                 if not any(item_path == clean_path(f.get("id", "")) or item_path.startswith(clean_path(f.get("id", "")) + "/") for f in allowed_folders): continue
             result_list.append(item)
     return {"files": result_list}
