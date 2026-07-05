@@ -7,16 +7,23 @@
       </div>
 
       <div class="w-full lg:w-auto lg:flex-1 max-w-xl relative order-3 lg:order-2 lg:mx-8">
-        <input v-model="searchQuery" type="text" placeholder="Search entire secure cloud space..." class="w-full bg-transparent border-b border-slate-300 text-sm sm:text-base font-normal text-slate-800 placeholder-slate-400 pb-1.5 pr-8 focus:outline-none focus:border-slate-900 transition-colors rounded-none" />
+        <input v-model="searchQuery" type="text" :placeholder="t.searchPlaceholder" class="w-full bg-transparent border-b border-slate-300 text-sm sm:text-base font-normal text-slate-800 placeholder-slate-400 pb-1.5 pr-8 focus:outline-none focus:border-slate-900 transition-colors rounded-none" />
         <div class="absolute right-2 bottom-2 text-slate-900 pointer-events-none">
           <svg class="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
         </div>
       </div>
 
       <div class="flex items-center gap-2 sm:gap-4 shrink-0 order-2 lg:order-3">
+        <div class="flex items-center border border-slate-200 rounded-xl px-2 py-1.5 bg-slate-50 text-xs font-bold shadow-sm">
+          <select :value="currentLang" @change="setLanguage($event.target.value)" class="bg-transparent border-none outline-none cursor-pointer pr-1 text-slate-800 font-bold focus:ring-0 text-xs">
+            <option value="tr">TR 🇹🇷</option>
+            <option value="en">EN 🇬🇧</option>
+          </select>
+        </div>
+
         <button v-if="userSession?.role === 'admin'" @click="router.push('/admin')" class="flex items-center gap-1 sm:gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 border border-slate-200 hover:border-slate-300 bg-slate-50 hover:bg-white px-2 py-1.5 sm:px-2.5 sm:py-1.5 rounded-xl transition-all shadow-sm active:scale-95">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-          <span class="hidden sm:inline">Admin Panel</span>
+          <span class="hidden sm:inline">{{ t.adminPanel }}</span>
           <span class="inline sm:hidden">Admin</span>
         </button>
 
@@ -24,12 +31,12 @@
 
         <div v-if="userSession" class="text-right hidden sm:block">
           <div class="text-xs font-bold text-slate-800">{{ userSession.name }}</div>
-          <div class="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{{ userSession.role === 'müşteri' ? 'customer' : (userSession.role === 'ekip' ? 'team' : userSession.role) }}</div>
+          <div class="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{{ userSession.role === 'customer' || userSession.role === 'müşteri' ? 'customer' : (userSession.role === 'ekip' ? 'team' : userSession.role) }}</div>
         </div>
 
         <button @click="handleLogout" class="flex items-center gap-1.5 text-xs font-bold text-red-600 hover:text-red-700 border border-red-100 hover:border-red-200 bg-red-50 hover:bg-red-100 px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shadow-sm active:scale-95">
           <svg class="w-3.5 h-3.5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-          <span class="hidden sm:inline">Logout</span>
+          <span class="hidden sm:inline">{{ t.logout }}</span>
         </button>
       </div>
     </header>
@@ -43,7 +50,7 @@
         </button>
 
         <nav class="flex items-center space-x-1.5 text-xs sm:text-sm font-normal text-slate-600">
-          <span class="cursor-pointer hover:text-slate-950 transition-colors" @click="goToRoot">Home</span>
+          <span class="cursor-pointer hover:text-slate-950 transition-colors" @click="goToRoot">{{ t.home }}</span>
           <template v-for="(crumb, index) in breadcrumbs" :key="index">
             <span class="text-slate-300">/</span>
             <span :class="crumb.isSearch ? 'text-slate-900 font-bold' : 'cursor-pointer hover:text-slate-950 transition-colors'" @click="!crumb.isSearch ? fetchFiles(crumb.path) : null" class="max-w-[120px] sm:max-w-[200px] truncate">{{ crumb.name }}</span>
@@ -53,10 +60,10 @@
 
       <div class="flex items-center justify-between w-full sm:w-auto gap-3 shrink-0">
         <div class="flex items-center gap-1 border border-slate-200 rounded-lg px-2 py-1 bg-slate-50/50 shadow-sm text-xs font-bold text-slate-700">
-          <span class="text-slate-400 font-medium select-none hidden sm:inline">Sort by:</span>
+          <span class="text-slate-400 font-medium select-none hidden sm:inline">{{ t.sortBy }}</span>
           <select v-model="sortBy" class="bg-transparent border-none outline-none cursor-pointer pr-1 text-slate-800 font-bold focus:ring-0 text-xs">
-            <option value="name">Name</option>
-            <option value="size">Size</option>
+            <option value="name">{{ t.name }}</option>
+            <option value="size">{{ t.size }}</option>
           </select>
           <button @click="toggleSortOrder" class="text-slate-400 hover:text-slate-900 transition-colors pl-1 border-l border-slate-200 active:scale-90" title="Toggle Sort Order">
             <svg v-if="sortOrder === 'asc'" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/></svg>
@@ -85,7 +92,7 @@
       </div>
 
       <div v-else-if="displayItems.length === 0" class="flex flex-col items-center justify-center h-64 text-slate-400 px-4 text-center">
-        <p class="text-sm font-medium">No secure files or directories matched your query.</p>
+        <p class="text-sm font-medium">{{ t.noFiles }}</p>
       </div>
 
       <template v-else>
@@ -94,7 +101,7 @@
             <div class="w-4 h-4 rounded border border-slate-300 bg-white flex items-center justify-center" :class="{'bg-theme-primary border-theme-primary': isAllSelected}">
               <svg v-if="isAllSelected" class="w-3 h-3 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
             </div>
-            Select / Unselect All
+            {{ t.selectAll }}
           </button>
         </div>
 
@@ -118,13 +125,13 @@
               
               <div v-if="activeDropdownId === item.id" class="absolute right-0 top-6 bg-white border border-slate-200 rounded-lg shadow-xl z-50 py-1 w-28 sm:w-32 text-left animate-fade-in">
                 <button @click.stop="shareItem(item); activeDropdownId = null" class="w-full px-3 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 transition-colors">
-                  <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 00Reservation 5.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-                  Share
+                  <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                  {{ t.share }}
                 </button>
                 <button @click.stop="downloadItem(item); activeDropdownId = null" :disabled="downloadingItemId === item.id" class="w-full px-3 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 transition-colors disabled:opacity-50">
                   <svg v-if="downloadingItemId === item.id" class="w-3 h-3 animate-spin text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                   <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" v-else><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                  Download
+                  {{ t.download }}
                 </button>
               </div>
             </div>
@@ -142,7 +149,7 @@
               </div>
 
               <svg v-else-if="isWord(item.name)" class="w-10 h-10 sm:w-14 sm:h-14" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M110 60H240/L290M110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/><path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
+                <path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
                 <path d="M240 60V110H290L240 60Z" fill="black"/>
                 <rect x="70" y="190" width="260" height="85" fill="#345a9a"/>
                 <text x="200" y="250" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" font-size="46" fill="white" text-anchor="middle" letter-spacing="0.5">DOCX</text>
@@ -180,7 +187,7 @@
               <p v-if="item.mimeType !== 'application/vnd.google-apps.folder'" class="text-[8px] sm:text-[9px] text-slate-400 mt-0.5 font-bold tracking-wider uppercase">
                 {{ formatSize(item.size) }}
               </p>
-              <p class="text-[8px] sm:text-[9px] text-slate-400 mt-0.5 font-bold uppercase tracking-wider" v-else>Folder</p>
+              <p class="text-[8px] sm:text-[9px] text-slate-400 mt-0.5 font-bold uppercase tracking-wider" v-else>{{ t.folder }}</p>
             </div>
           </div>
         </div>
@@ -197,7 +204,7 @@
                 
                 <th scope="col" class="pl-2 pr-4 py-2 cursor-pointer select-none hover:text-slate-600 group" @click="handleSort('name')">
                   <div class="flex items-center gap-1">
-                    File Name
+                    {{ t.fileName }}
                     <span :class="sortBy === 'name' ? 'text-slate-800' : 'text-slate-300 group-hover:text-slate-400 transition-colors'">
                       <svg v-if="sortBy === 'name' && sortOrder === 'asc'" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" v-else><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7"/></svg>
@@ -207,7 +214,7 @@
 
                 <th scope="col" class="px-3 py-2 w-24 cursor-pointer select-none hover:text-slate-600 group hidden sm:table-cell" @click="handleSort('size')">
                   <div class="flex items-center gap-1">
-                    Size
+                    {{ t.size }}
                     <span :class="sortBy === 'size' ? 'text-slate-800' : 'text-slate-300 group-hover:text-slate-400 transition-colors'">
                       <svg v-if="sortBy === 'size' && sortOrder === 'asc'" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" v-else><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7"/></svg>
@@ -215,9 +222,9 @@
                   </div>
                 </th>
                 
-                <th scope="col" class="px-3 py-2 w-24 hidden md:table-cell">Type</th> 
-                <th scope="col" class="px-2 py-2 w-14 text-center">Share</th>
-                <th scope="col" class="px-2 py-2 w-14 rounded-r-xl text-center">Download</th>
+                <th scope="col" class="px-3 py-2 w-24 hidden md:table-cell">{{ t.type }}</th> 
+                <th scope="col" class="px-2 py-2 w-14 text-center">{{ t.share }}</th>
+                <th scope="col" class="px-2 py-2 w-14 rounded-r-xl text-center">{{ t.download }}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-50">
@@ -253,7 +260,7 @@
                       <text x="200" y="250" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" font-size="46" fill="white" text-anchor="middle" letter-spacing="0.5">XLSX</text>
                     </svg>
 
-                    <svg v-else-if="isPPTX(item.name)" class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <svg v-else-if="isPPTX(item.name)" class="w-4 h-4 sm:w-5 h-5" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
                       <path d="M240 60V110H290L240 60Z" fill="black"/>
                       <rect x="70" y="190" width="260" height="85" fill="#d24715"/>
@@ -275,7 +282,7 @@
                   </div>
                 </td>
                 <td class="px-3 py-1.5 text-slate-500 text-xs font-bold hidden sm:table-cell">{{ item.mimeType === 'application/vnd.google-apps.folder' ? '--' : formatSize(item.size) }}</td>
-                <td class="px-3 py-1.5 text-slate-400 text-xs font-bold uppercase hidden md:table-cell">{{ item.mimeType === 'application/vnd.google-apps.folder' ? 'Folder' : getExtension(item.name) }}</td>
+                <td class="px-3 py-1.5 text-slate-400 text-xs font-bold uppercase hidden md:table-cell">{{ item.mimeType === 'application/vnd.google-apps.folder' ? t.folder : getExtension(item.name) }}</td>
                 <td class="px-2 py-1.5 text-center">
                   <button v-if="item.mimeType !== 'application/vnd.google-apps.folder'" @click.stop="shareItem(item)" class="inline-flex items-center justify-center p-1 text-slate-400 hover:text-slate-900 bg-white border border-slate-200 rounded-md shadow-sm">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
@@ -296,12 +303,12 @@
 
     <div v-if="selectedItems.length > 0" class="fixed bottom-0 inset-x-0 z-40 flex flex-col sm:flex-row items-center justify-between px-6 sm:px-12 py-3 bg-theme-primary text-slate-900 select-none shadow-[0_-10px_40px_rgba(0,0,0,0.1)] rounded-t-2xl border-t border-yellow-600/20 gap-2 sm:gap-0">
       <div class="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
-        <span class="font-black text-sm sm:text-base">{{ selectedItems.length }} files selected</span>
+        <span class="font-black text-sm sm:text-base">{{ selectedItems.length }} {{ t.filesSelected }}</span>
         <button @click="clearSelection" class="w-7 h-7 flex items-center justify-center bg-black/10 hover:bg-black/20 rounded-full text-xs">✕</button>
       </div>
       <button @click="downloadSelected" :disabled="isDownloading" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-900 text-white px-6 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-800 transition-all shadow-lg sm:shadow-none">
         <svg v-if="isDownloading" class="w-3.5 h-3.5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-        {{ isDownloading ? 'Preparing ZIP...' : 'Download Selected' }}
+        {{ isDownloading ? t.preparingZip : t.downloadSelected }}
       </button>
     </div>
 
@@ -321,13 +328,13 @@
           <div class="flex items-center gap-1.5 shrink-0">
             <button @click="shareItem(selectedFile)" class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 border border-slate-200 bg-white rounded-xl transition-all shadow-sm active:scale-95">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-              <span class="hidden sm:inline">Share</span>
+              <span class="hidden sm:inline">{{ t.share }}</span>
             </button>
             
             <button @click="downloadItem(selectedFile)" :disabled="downloadingItemId === selectedFile.id" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-black text-slate-900 bg-theme-primary border border-yellow-600/10 rounded-xl transition-all shadow-sm active:scale-95 disabled:opacity-50 hover:brightness-95">
               <svg v-if="downloadingItemId === selectedFile.id" class="w-3.5 h-3.5 animate-spin text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
               <svg class="w-3.5 h-3.5 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24" v-else><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-              <span class="hidden sm:inline">Download</span>
+              <span class="hidden sm:inline">{{ t.download }}</span>
             </button>
             <div class="h-4 w-px bg-slate-200 mx-0.5"></div>
             <button @click="selectedFile = null" class="w-7 h-7 flex items-center justify-center hover:bg-slate-200 rounded-full text-slate-500 transition-colors text-xs font-bold">✕</button>
@@ -348,9 +355,9 @@
             <iframe v-else-if="isPDF(selectedFile.name)" :src="getPreviewUrl(selectedFile, 'preview')" class="w-full h-full rounded-xl border border-slate-200 bg-white shadow-inner pointer-events-auto"></iframe>
             
             <div class="flex flex-col items-center justify-center text-center p-6 bg-white rounded-2xl border border-slate-200 max-w-xs pointer-events-auto" v-else>
-              <h4 class="text-base sm:text-lg font-black text-slate-800 mb-1">Preview Not Supported</h4>
-              <p class="text-xs text-slate-500 mb-4">This file type cannot be previewed directly in the browser.</p>
-              <button @click="downloadItem(selectedFile)" class="flex items-center gap-2 px-5 py-2.5 bg-theme-primary text-slate-900 rounded-xl text-xs font-bold">Download File</button>
+              <h4 class="text-base sm:text-lg font-black text-slate-800 mb-1">{{ t.previewNotSupportedPreview }}</h4>
+              <p class="text-xs text-slate-500 mb-4">{{ t.previewNotSupportedDesc }}</p>
+              <button @click="downloadItem(selectedFile)" class="flex items-center gap-2 px-5 py-2.5 bg-theme-primary text-slate-900 rounded-xl text-xs font-bold">{{ t.downloadFile }}</button>
             </div>
           </div>
 
@@ -363,7 +370,7 @@
 
     <div v-if="showToast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-emerald-500 text-white px-4 py-2.5 rounded-xl shadow-2xl font-bold text-xs z-50 flex items-center gap-1.5 border border-emerald-400 animate-fade-in transition-all">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-      Dosya linki kopyalandı!
+      {{ t.toastCopied }}
     </div>
   </div>
 </template>
@@ -372,6 +379,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { currentLang, setLanguage, t } from '../utils/i18n.js'
 
 const router = useRouter()
 const API_BASE = window.location.origin
@@ -513,7 +521,7 @@ const closeAllDropdowns = () => {
 
 const goToParentFolder = () => {
   if (!currentPath.value) return
-  if (userSession.value?.role === 'müşteri') {
+  if (['customer', 'müşteri'].includes(userSession.value?.role)) {
     const allowed = userSession.value?.allowedFolders || []
     const isRootOfAllowed = allowed.some(f => f.id === currentPath.value)
     if (isRootOfAllowed) {
@@ -529,10 +537,10 @@ const goToParentFolder = () => {
 
 const breadcrumbs = computed(() => {
   if (searchQuery.value.trim()) {
-    return [{ name: `Search results for "${searchQuery.value}"`, path: currentPath.value, isSearch: true }]
+    return [{ name: `${t.value.searchResultFor} "${searchQuery.value}"`, path: currentPath.value, isSearch: true }]
   }
 
-  const isCustomer = userSession.value?.role === 'müşteri'
+  const isCustomer = ['customer', 'müşteri'].includes(userSession.value?.role)
   if (isCustomer) {
     const allowed = userSession.value?.allowedFolders || []
     const matched = allowed.find(f => currentPath.value === f.id || currentPath.value.startsWith(f.id + '/'))
@@ -573,7 +581,6 @@ const isAllSelected = computed(() => downloadableItems.value.length > 0 && selec
 
 const handleLogout = () => {
   localStorage.removeItem('bonna_user_session')
-  localStorage.removeItem('loginTime')
   router.push('/login')
 }
 
@@ -585,16 +592,14 @@ const formatSize = (bytes) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
 }
 
-const triggerToast = () => {
-  showToast.value = true
-  setTimeout(() => { showToast.value = false }, 3000)
-}
-
 const shareItem = (item) => {
   if (!item || !item.webViewLink) return
   if (navigator.clipboard && window.isSecureContext) {
     navigator.clipboard.writeText(item.webViewLink)
-      .then(() => triggerToast())
+      .then(() => {
+        showToast.value = true
+        setTimeout(() => { showToast.value = false }, 3000)
+      })
       .catch(() => fallbackCopyTextToClipboard(item.webViewLink))
   } else {
     fallbackCopyTextToClipboard(item.webViewLink)
@@ -611,7 +616,8 @@ const fallbackCopyTextToClipboard = (text) => {
   textArea.select()
   try {
     if (document.execCommand('copy')) {
-      triggerToast()
+      showToast.value = true
+      setTimeout(() => { showToast.value = false }, 3000)
     }
   } catch (err) {
     console.error("Kopyalama başarısız:", err)
@@ -630,9 +636,7 @@ const toggleSelection = (item) => {
 const toggleSelectAll = () => { isAllSelected.value ? clearSelection() : selectedItems.value = [...downloadableItems.value] }
 const clearSelection = () => selectedItems.value = []
 
-// 🌟 GÜNCELLEME: Tekli indirmede indirme kalkanı aktiftir
 const downloadSingleFile = async (fileItem) => {
-  window.__bonna_download_active = true 
   try {
     const response = await axios.get(`${API_BASE}/download/file?path=${encodeURIComponent(fileItem.id)}`, { responseType: 'blob' })
     const url = window.URL.createObjectURL(new Blob([response.data]))
@@ -645,15 +649,11 @@ const downloadSingleFile = async (fileItem) => {
     window.URL.revokeObjectURL(url)
   } catch (error) {
     console.error("Download error:", error)
-  } finally {
-    window.__bonna_download_active = false 
   }
 }
 
-// 🌟 GÜNCELLEME: Toplu ZIP indirmelerinde indirme kalkanı aktiftir
 const downloadZip = async (targets) => {
   isDownloading.value = true
-  window.__bonna_download_active = true 
   try {
     const response = await axios.post(`${API_BASE}/download/zip`, { 
       paths: targets.map(i => i.id)
@@ -669,7 +669,6 @@ const downloadZip = async (targets) => {
     console.error("Zip creation error:", error)
   } finally { 
     isDownloading.value = false 
-    window.__bonna_download_active = false 
   }
 }
 

@@ -6,10 +6,11 @@ import mimetypes
 import urllib.parse
 import requests
 import openpyxl
+import threading 
 from typing import List, Optional
 from datetime import datetime, timedelta
 
-from fastapi import FastAPI, HTTPException, Depends, Security, UploadFile, File
+from fastapi import FastAPI, HTTPException, Depends, Security, UploadFile, File, BackgroundTasks  
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -73,7 +74,8 @@ security_bearer = HTTPBearer()
 
 GLOBAL_FILE_INDEX = []
 LAST_INDEX_TIME = None
-CACHE_DURATION_MINUTES = 5
+CACHE_DURATION_DAYS = 7  
+IS_INDEXING = False
 
 def get_password_hash(password: str) -> str:
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
@@ -82,7 +84,6 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     try: return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
     except: return False
 
-# 🌟 GÜNCELLEME: exp (expiry) parametresi tamamen kaldırıldı, token artık sonsuz ömürlü.
 def create_access_token(data: dict):
     to_encode = data.copy()
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -165,6 +166,62 @@ def get_bunny_base_url():
 def clean_path(p: str) -> str:
     if not p: return ""
     return p.strip("/")
+
+def background_index_crawl():
+    global GLOBAL_FILE_INDEX, LAST_INDEX_TIME, IS_INDEXING
+    if IS_INDEXING:
+        return
+    IS_INDEXING = True
+    try:
+        cfg = load_cdn_config()
+        storage_name = cfg.get("BUNNY_STORAGE_NAME")
+        if storage_name == "bonna-api-test" or not cfg.get("BUNNY_STORAGE_PASSWORD"):
+            return
+            
+        base_url = get_bunny_base_url()
+        headers = {"AccessKey": cfg.get("BUNNY_STORAGE_PASSWORD"), "accept": "application/json"}
+        compiled_list = []
+        queue = [""]
+        folders_scanned = 0
+        
+        while queue and folders_scanned < 1500:
+            current_path = queue.pop(0)
+            folders_scanned += 1
+            url = f"{base_url}/{urllib.parse.quote(current_path, safe='/')}/" if current_path else f"{base_url}/"
+            try:
+                resp = requests.get(url, headers=headers, timeout=10)
+                if resp.status_code == 200:
+                    for item in resp.json():
+                        is_dir = item.get("IsDirectory", False)
+                        name = item.get("ObjectName")
+                        item_path = f"{current_path}/{name}" if current_path else name
+                        mime_type = "application/vnd.google-apps.folder" if is_dir else (mimetypes.guess_type(name)[0] or "application/octet-stream")
+                        
+                        compiled_list.append({
+                            "id": item_path,
+                            "name": name,
+                            "mimeType": mime_type,
+                            "size": item.get("Length", 0),
+                            "webViewLink": f"{cfg.get('BUNNY_PULL_ZONE_URL')}/{urllib.parse.quote(item_path, safe='/')}" if not is_dir else ""
+                        })
+                        if is_dir:
+                            queue.append(item_path)
+            except:
+                pass
+                
+        GLOBAL_FILE_INDEX = compiled_list
+        LAST_INDEX_TIME = datetime.utcnow()
+        print(f"--- BonnaCloud Haftalık İndeksleme Tamamlandı: {len(GLOBAL_FILE_INDEX)} nesne hafızaya alındı. ---")
+    except Exception as e:
+        print(f"İndeksleme sırasında hata oluştu: {e}")
+    finally:
+        IS_INDEXING = False
+
+@app.on_event("startup")
+def startup_event():
+    t = threading.Thread(target=background_index_crawl)
+    t.daemon = True
+    t.start()
 
 # ROLE API
 @app.get("/api/roles")
@@ -293,9 +350,9 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     if not user or not user.is_active: raise HTTPException(status_code=401, detail="Login credentials verification failed.")
     if not verify_password(payload.password, user.password): raise HTTPException(status_code=401, detail="Login credentials verification failed.")
     
-    # 🌟 GÜNCELLEME: Giriş esnasında artık zaman aşımı olmayan bir token üretiliyor.
     token = create_access_token(data={"sub": user.email, "role": user.role})
-    return {"id": user.id, "name": user.name or "System Administrator", "email": user.email, "role": user.role, "role_id": user.role_id, "allowedFolders": user.allowed_folders if user.allowed_folders else [], "isActive": user.is_active, "token": token}
+    resolved_folders = user.role_rel.allowed_folders if user.role_rel else (user.allowed_folders if user.allowed_folders else [])
+    return {"id": user.id, "name": user.name or "System Administrator", "email": user.email, "role": user.role, "role_id": user.role_id, "allowedFolders": resolved_folders, "isActive": user.is_active, "token": token}
 
 @app.get("/api/cdn")
 def get_cdn_settings(current_user: UserDB = Depends(get_current_user)):
@@ -304,12 +361,32 @@ def get_cdn_settings(current_user: UserDB = Depends(get_current_user)):
     return {"storageName": cfg.get("BUNNY_STORAGE_NAME"), "storagePassword": cfg.get("BUNNY_STORAGE_PASSWORD"), "pullZoneUrl": cfg.get("BUNNY_PULL_ZONE_URL"), "region": cfg.get("BUNNY_REGION")}
 
 @app.post("/api/cdn")
-def update_cdn_settings(payload: CDNConfigUpdateRequest, current_user: UserDB = Depends(get_current_user)):
-    global LAST_INDEX_TIME
+def update_cdn_settings(payload: CDNConfigUpdateRequest, background_tasks: BackgroundTasks, current_user: UserDB = Depends(get_current_user)):
+    global LAST_INDEX_TIME, GLOBAL_FILE_INDEX
     if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
     save_cdn_config({"BUNNY_STORAGE_NAME": payload.storageName, "BUNNY_STORAGE_PASSWORD": payload.storagePassword, "BUNNY_PULL_ZONE_URL": payload.pullZoneUrl, "BUNNY_REGION": payload.region})
     LAST_INDEX_TIME = None 
+    GLOBAL_FILE_INDEX = []
+    background_tasks.add_task(background_index_crawl)
     return {"message": "CDN configuration node successfully updated."}
+
+@app.post("/api/cdn/index")
+def trigger_manual_indexing(background_tasks: BackgroundTasks, current_user: UserDB = Depends(get_current_user)):
+    global IS_INDEXING
+    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
+    if IS_INDEXING: return {"message": "Indexing is already running in background.", "status": "running"}
+    background_tasks.add_task(background_index_crawl)
+    return {"message": "Manual search index task successfully deployed.", "status": "started"}
+
+@app.get("/api/cdn/index-status")
+def get_index_status(current_user: UserDB = Depends(get_current_user)):
+    global LAST_INDEX_TIME, GLOBAL_FILE_INDEX, IS_INDEXING
+    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
+    return {
+        "is_indexing": IS_INDEXING,
+        "last_index_time": LAST_INDEX_TIME.isoformat() if LAST_INDEX_TIME else None,
+        "total_items": len(GLOBAL_FILE_INDEX)
+    }
 
 def check_hierarchical_permission(item_path: str, allowed_folders: list) -> bool:
     path_clean = clean_path(item_path)
@@ -357,47 +434,27 @@ def get_files(path: str = "", db: Session = Depends(get_db), current_user: UserD
     return {"files": result}
 
 @app.get("/api/search")
-def search_files(query: str, current_user: UserDB = Depends(get_db), current_user_obj: UserDB = Depends(get_current_user)):
-    global GLOBAL_FILE_INDEX, LAST_INDEX_TIME
+def search_files(query: str, background_tasks: BackgroundTasks, current_user: Session = Depends(get_db), current_user_obj: UserDB = Depends(get_current_user)):
+    global GLOBAL_FILE_INDEX, LAST_INDEX_TIME, IS_INDEXING
     now = datetime.utcnow()
-    if not LAST_INDEX_TIME or (now - LAST_INDEX_TIME) > timedelta(minutes=CACHE_DURATION_MINUTES):
-        cfg = load_cdn_config()
-        base_url = get_bunny_base_url()
-        headers = {"AccessKey": cfg.get("BUNNY_STORAGE_PASSWORD"), "accept": "application/json"}
-        compiled_list = []
-        queue = [""]
-        folders_scanned = 0
-        while queue and folders_scanned < 85:
-            current_path = queue.pop(0)
-            folders_scanned += 1
-            url = f"{base_url}/{urllib.parse.quote(current_path, safe='/')}/" if current_path else f"{base_url}/"
-            try:
-                resp = requests.get(url, headers=headers, timeout=10)
-                if resp.status_code == 200:
-                    for item in resp.json():
-                        is_dir = item.get("IsDirectory", False)
-                        name = item.get("ObjectName")
-                        item_path = f"{current_path}/{name}" if current_path else name
-                        mime_type = "application/vnd.google-apps.folder" if is_dir else (mimetypes.guess_type(name)[0] or "application/octet-stream")
-                        compiled_list.append({"id": item_path, "name": name, "mimeType": mime_type, "size": item.get("Length", 0), "webViewLink": f"{cfg.get('BUNNY_PULL_ZONE_URL')}/{urllib.parse.quote(item_path, safe='/')}" if not is_dir else ""})
-                        if is_dir: queue.append(item_path)
-            except: pass
-        GLOBAL_FILE_INDEX = compiled_list
-        LAST_INDEX_TIME = datetime.utcnow()
-
+    if not LAST_INDEX_TIME or (now - LAST_INDEX_TIME) > timedelta(days=CACHE_DURATION_DAYS):
+        if not IS_INDEXING: background_tasks.add_task(background_index_crawl)
+            
     result_list = []
     query_lower = query.lower()
     allowed_folders = current_user_obj.role_rel.allowed_folders if current_user_obj.role_rel else []
     if not allowed_folders: allowed_folders = current_user_obj.allowed_folders or []
+
     for item in GLOBAL_FILE_INDEX:
         item_path = item["id"]
         name = item["name"]
-        
-        if current_user_obj.role in ["customer", "müşteri"] and not check_hierarchical_permission(item_path, allowed_folders): continue
+        if current_user_obj.role in ["customer", "müşteri"]:
+            if not check_hierarchical_permission(item_path, allowed_folders): continue
+            if not any(item_path == clean_path(f.get("id", "")) or item_path.startswith(clean_path(f.get("id", "")) + "/") for f in allowed_folders): continue
+                
         if query_lower in name.lower():
-            if current_user_obj.role in ["customer", "müşteri"]:
-                if not any(item_path == clean_path(f.get("id", "")) or item_path.startswith(clean_path(f.get("id", "")) + "/") for f in allowed_folders): continue
             result_list.append(item)
+            
     return {"files": result_list}
 
 @app.get("/download/file")
