@@ -31,7 +31,7 @@
 
         <div v-if="userSession" class="text-right hidden sm:block">
           <div class="text-xs font-bold text-slate-800">{{ userSession.name }}</div>
-          <div class="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{{ userSession.role === 'customer' || userSession.role === 'müşteri' ? 'customer' : (userSession.role === 'ekip' ? 'team' : userSession.role) }}</div>
+          <div class="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{{ ['customer', 'müşteri'].includes(userSession.role) ? 'customer' : (userSession.role === 'ekip' ? 'team' : userSession.role) }}</div>
         </div>
 
         <button @click="handleLogout" class="flex items-center gap-1.5 text-xs font-bold text-red-600 hover:text-red-700 border border-red-100 hover:border-red-200 bg-red-50 hover:bg-red-100 px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shadow-sm active:scale-95">
@@ -125,7 +125,7 @@
               
               <div v-if="activeDropdownId === item.id" class="absolute right-0 top-6 bg-white border border-slate-200 rounded-lg shadow-xl z-50 py-1 w-28 sm:w-32 text-left animate-fade-in">
                 <button @click.stop="shareItem(item); activeDropdownId = null" class="w-full px-3 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 transition-colors">
-                  <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                  <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 00-5.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
                   {{ t.share }}
                 </button>
                 <button @click.stop="downloadItem(item); activeDropdownId = null" :disabled="downloadingItemId === item.id" class="w-full px-3 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 transition-colors disabled:opacity-50">
@@ -149,7 +149,7 @@
               </div>
 
               <svg v-else-if="isWord(item.name)" class="w-10 h-10 sm:w-14 sm:h-14" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
+                <path d="M110 60H240/L290M110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/><path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
                 <path d="M240 60V110H290L240 60Z" fill="black"/>
                 <rect x="70" y="190" width="260" height="85" fill="#345a9a"/>
                 <text x="200" y="250" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" font-size="46" fill="white" text-anchor="middle" letter-spacing="0.5">DOCX</text>
@@ -260,7 +260,7 @@
                       <text x="200" y="250" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" font-size="46" fill="white" text-anchor="middle" letter-spacing="0.5">XLSX</text>
                     </svg>
 
-                    <svg v-else-if="isPPTX(item.name)" class="w-4 h-4 sm:w-5 h-5" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <svg v-else-if="isPPTX(item.name)" class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
                       <path d="M240 60V110H290L240 60Z" fill="black"/>
                       <rect x="70" y="190" width="260" height="85" fill="#d24715"/>
@@ -285,7 +285,7 @@
                 <td class="px-3 py-1.5 text-slate-400 text-xs font-bold uppercase hidden md:table-cell">{{ item.mimeType === 'application/vnd.google-apps.folder' ? t.folder : getExtension(item.name) }}</td>
                 <td class="px-2 py-1.5 text-center">
                   <button v-if="item.mimeType !== 'application/vnd.google-apps.folder'" @click.stop="shareItem(item)" class="inline-flex items-center justify-center p-1 text-slate-400 hover:text-slate-900 bg-white border border-slate-200 rounded-md shadow-sm">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 00-5.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
                   </button>
                 </td>
                 <td class="px-2 py-1.5 text-center">
@@ -327,7 +327,7 @@
           
           <div class="flex items-center gap-1.5 shrink-0">
             <button @click="shareItem(selectedFile)" class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 border border-slate-200 bg-white rounded-xl transition-all shadow-sm active:scale-95">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 00-5.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
               <span class="hidden sm:inline">{{ t.share }}</span>
             </button>
             
@@ -634,7 +634,7 @@ const toggleSelection = (item) => {
 }
 
 const toggleSelectAll = () => { isAllSelected.value ? clearSelection() : selectedItems.value = [...downloadableItems.value] }
-const clearSelection = () => selectedItems.value = []
+const clearSelection = () => { selectedItems.value = [] }
 
 const downloadSingleFile = async (fileItem) => {
   try {

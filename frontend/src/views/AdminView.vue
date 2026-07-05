@@ -35,7 +35,7 @@
             </button>
             
             <input type="file" ref="fileInput" @change="handleBulkUpload" accept=".xlsx" class="hidden" />
-            <button @click="triggerBulkUpload" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95">{{ t.importExcel }}</button>
+            <button @click="triggerBulkUpload" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95">📥 {{ t.importExcel }}</button>
             <button @click="openUserModal(null)" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95">{{ t.addNewUser }}</button>
           </div>
         </div>
@@ -131,7 +131,7 @@
             </div>
             <div>
               <label class="block text-slate-600 mb-1.5">{{ t.regionPrefix }}</label>
-              <input v-model="cdnForm.region" type="text" :placeholder="t.regionPrefix" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-medium focus:outline-none focus:border-slate-900 focus:bg-white" />
+              <input v-model="cdnForm.region" type="text" :placeholder="t.regionPlaceholder" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-medium focus:outline-none focus:border-slate-900 focus:bg-white" />
             </div>
             <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95">{{ t.commitCdn }}</button>
           </form>
@@ -162,7 +162,7 @@
         <div class="space-y-3.5 flex-1 flex flex-col min-h-0 overflow-hidden">
           <div class="shrink-0">
             <label class="block text-slate-600 mb-1">{{ t.roleName }}</label>
-            <input v-model="roleForm.name" type="text" placeholder="e.g. Tasarim_Ekibi, Musteri_A_Grubu" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium focus:outline-none focus:border-slate-900 focus:bg-white" />
+            <input v-model="roleForm.name" type="text" :placeholder="t.roleNamePlaceholder" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium focus:outline-none focus:border-slate-900 focus:bg-white" />
           </div>
           
           <div class="shrink-0 flex flex-col">
@@ -201,10 +201,10 @@
             <table class="min-w-full divide-y divide-slate-100 text-left text-sm" v-else>
               <thead>
                 <tr class="text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/70 select-none">
-                  <th scope="col" class="pl-4 py-2 w-8 rounded-l-xl">Select</th>
-                  <th scope="col" class="pl-3 py-2">File Name</th>
-                  <th scope="col" class="px-3 py-2 w-24">Size</th>
-                  <th scope="col" class="px-3 py-2 w-24 rounded-r-xl">Type</th>
+                  <th scope="col" class="pl-4 py-2 w-8 rounded-l-xl">{{ t.select }}</th>
+                  <th scope="col" class="pl-3 py-2">{{ t.fileName }}</th>
+                  <th scope="col" class="px-3 py-2 w-24">{{ t.size }}</th>
+                  <th scope="col" class="px-3 py-2 w-24 rounded-r-xl">{{ t.type }}</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-50">
@@ -230,7 +230,7 @@
                     {{ item.mimeType === 'application/vnd.google-apps.folder' ? '--' : formatSize(item.size) }}
                   </td>
                   <td class="px-3 py-1.5 text-slate-400 text-[10px] font-bold uppercase rounded-r-xl">
-                    {{ item.mimeType === 'application/vnd.google-apps.folder' ? 'Folder' : getExtension(item.name) }}
+                    {{ item.mimeType === 'application/vnd.google-apps.folder' ? t.folder : getExtension(item.name) }}
                   </td>
                 </tr>
               </tbody>
@@ -252,7 +252,7 @@
         <h3 class="text-sm font-black text-slate-900 mb-4">{{ userForm.id ? t.editUserTitle : t.newUserTitle }}</h3>
         <div class="space-y-4">
           <div>
-            <label class="block text-slate-600 mb-1.5">{{ t.fullName }}</label>
+            <label class="block text-slate-600 mb-1.5">{{ t.userFullName }}</label>
             <input v-model="userForm.name" type="text" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-medium focus:outline-none focus:border-slate-900 focus:bg-white" />
           </div>
           <div>
@@ -265,13 +265,13 @@
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-slate-600 mb-1.5">{{ t.company }}</label>
-              <input v-model="userForm.company" type="text" placeholder="e.g. Bonna, Bayi A" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-medium focus:outline-none focus:border-slate-900 focus:bg-white" />
+              <label class="block text-slate-600 mb-1.5">{{ t.companyOrganization }}</label>
+              <input v-model="userForm.company" type="text" :placeholder="t.companyPlaceholder" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-medium focus:outline-none focus:border-slate-900 focus:bg-white" />
             </div>
             <div>
-              <label class="block text-slate-600 mb-1.5">{{ t.inheritedRole }}</label>
+              <label class="block text-slate-600 mb-1.5">{{ t.assignAccessRole }}</label>
               <select v-model="userForm.role_id" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-blue-700 focus:outline-none focus:border-slate-900 focus:bg-white">
-                <option :value="null">No Role (Access Denied)</option>
+                <option :value="null">{{ t.noRoleAccessDenied }}</option>
                 <option v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</option>
               </select>
             </div>
@@ -297,8 +297,8 @@
         <h3 class="text-lg font-black text-slate-900 mb-2">{{ confirmDialog.title }}</h3>
         <p class="text-sm text-slate-500 font-medium mb-8 leading-relaxed">{{ confirmDialog.message }}</p>
         <div class="flex gap-3 justify-center w-full">
-          <button @click="cancelConfirm" class="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-sm active:scale-95">No</button>
-          <button @click="acceptConfirm" class="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-md active:scale-95">Yes</button>
+          <button @click="cancelConfirm" class="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-sm active:scale-95">{{ t.no }}</button>
+          <button @click="acceptConfirm" class="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-md active:scale-95">{{ t.yes }}</button>
         </div>
       </div>
     </div>
@@ -488,7 +488,9 @@ const adminBrowseFolder = async (targetPath = "") => {
     adminCurrentPath.value = targetPath
   } catch (err) {
     console.error("Folder exploration failed:", err)
-  } finally { loadingFolders.value = false }
+  } finally {
+    loadingFolders.value = false
+  }
 }
 
 const adminGoToParent = () => {
