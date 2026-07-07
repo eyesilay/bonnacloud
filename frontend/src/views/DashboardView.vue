@@ -16,13 +16,13 @@
       <div class="flex items-center gap-2 sm:gap-4 shrink-0 order-2 lg:order-3">
         <div class="flex items-center border border-slate-200 rounded-xl px-2 py-1.5 bg-slate-50 text-xs font-bold shadow-sm">
           <select :value="currentLang" @change="setLanguage($event.target.value)" class="bg-transparent border-none outline-none cursor-pointer pr-1 text-slate-800 font-bold focus:ring-0 text-xs">
-            <option value="tr">TR 🇹🇷</option>
-            <option value="en">EN 🇬🇧</option>
+            <option value="tr">TR</option>
+            <option value="en">EN</option>
           </select>
         </div>
 
         <button v-if="userSession?.role === 'admin'" @click="router.push('/admin')" class="flex items-center gap-1 sm:gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 border border-slate-200 hover:border-slate-300 bg-slate-50 hover:bg-white px-2 py-1.5 sm:px-2.5 sm:py-1.5 rounded-xl transition-all shadow-sm active:scale-95">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 Option 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
           <span class="hidden sm:inline">{{ t.adminPanel }}</span>
           <span class="inline sm:hidden">Admin</span>
         </button>
@@ -67,7 +67,7 @@
           </select>
           <button @click="toggleSortOrder" class="text-slate-400 hover:text-slate-900 transition-colors pl-1 border-l border-slate-200 active:scale-90" title="Toggle Sort Order">
             <svg v-if="sortOrder === 'asc'" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/></svg>
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" v-else><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4"/></svg>
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" v-else><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7"/></svg>
           </button>
         </div>
 
@@ -125,7 +125,7 @@
               
               <div v-if="activeDropdownId === item.id" class="absolute right-0 top-6 bg-white border border-slate-200 rounded-lg shadow-xl z-50 py-1 w-28 sm:w-32 text-left animate-fade-in">
                 <button @click.stop="shareItem(item); activeDropdownId = null" class="w-full px-3 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 transition-colors">
-                  <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 00-5.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                  <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 compress-10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
                   {{ t.share }}
                 </button>
                 <button @click.stop="downloadItem(item); activeDropdownId = null" :disabled="downloadingItemId === item.id" class="w-full px-3 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 transition-colors disabled:opacity-50">
@@ -285,7 +285,7 @@
                 <td class="px-3 py-1.5 text-slate-400 text-xs font-bold uppercase hidden md:table-cell">{{ item.mimeType === 'application/vnd.google-apps.folder' ? t.folder : getExtension(item.name) }}</td>
                 <td class="px-2 py-1.5 text-center">
                   <button v-if="item.mimeType !== 'application/vnd.google-apps.folder'" @click.stop="shareItem(item)" class="inline-flex items-center justify-center p-1 text-slate-400 hover:text-slate-900 bg-white border border-slate-200 rounded-md shadow-sm">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 00-5.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
                   </button>
                 </td>
                 <td class="px-2 py-1.5 text-center">
@@ -327,7 +327,7 @@
           
           <div class="flex items-center gap-1.5 shrink-0">
             <button @click="shareItem(selectedFile)" class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 border border-slate-200 bg-white rounded-xl transition-all shadow-sm active:scale-95">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 00-5.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
               <span class="hidden sm:inline">{{ t.share }}</span>
             </button>
             
@@ -352,7 +352,8 @@
           <div class="w-full h-full flex items-center justify-center overflow-hidden pointer-events-none sm:pointer-events-auto max-h-[calc(78dvh-60px)] sm:max-h-[calc(85vh-60px)]">
             <img v-if="isImage(selectedFile.name)" :src="getPreviewUrl(selectedFile, 'preview')" class="max-w-full max-h-full object-contain select-none pointer-events-none rounded-lg" />
             <video v-else-if="isVideo(selectedFile.name)" :src="getPreviewUrl(selectedFile, 'preview')" controls autoplay muted playsinline crossorigin="anonymous" preload="auto" class="max-w-full max-h-full object-contain rounded-xl shadow-lg bg-black pointer-events-auto"></video>
-            <iframe v-else-if="isPDF(selectedFile.name)" :src="getPreviewUrl(selectedFile, 'preview')" class="w-full h-full rounded-xl border border-slate-200 bg-white shadow-inner pointer-events-auto"></iframe>
+            
+            <iframe v-else-if="isPDF(selectedFile.name)" :src="getPreviewUrl(selectedFile, 'preview')" class="w-full min-h-[60vh] sm:min-h-[68vh] rounded-xl border border-slate-200 bg-white shadow-inner pointer-events-auto"></iframe>
             
             <div class="flex flex-col items-center justify-center text-center p-6 bg-white rounded-2xl border border-slate-200 max-w-xs pointer-events-auto" v-else>
               <h4 class="text-base sm:text-lg font-black text-slate-800 mb-1">{{ t.previewNotSupportedPreview }}</h4>
@@ -429,7 +430,7 @@ const analyzeSwipeGesture = () => {
   }
 }
 
-let searchTimeout = null
+let searchTimeout = null;
 watch(searchQuery, (newQuery) => {
   clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => {
@@ -707,7 +708,12 @@ const getPreviewUrl = (item, mode) => {
   if (isVideo(item.name)) {
     return mode === 'preview' ? baseLink : `${baseLink}#t=6.0`
   }
-  if (isPDF(item.name) || isWord(item.name) || isExcel(item.name) || isPPTX(item.name)) {
+  if (isPDF(item.name)) {
+    return mode === 'preview' 
+      ? `https://docs.google.com/gview?url=${encodeURIComponent(baseLink)}&embedded=true` 
+      : baseLink
+  }
+  if (isWord(item.name) || isExcel(item.name) || isPPTX(item.name)) {
     return baseLink
   }
   if (mode === 'list') return `${baseLink}?width=40&quality=40`
@@ -737,7 +743,7 @@ const fetchFiles = async (path = "") => {
     }
   } catch (error) {
     systemMessage.value = "Cannot access the cloud server (backend). Please check your Docker containers."
-  } finally { loading.value = false }
+  } float: { loading.value = false }
 }
 
 const handleItemClick = (item) => {
