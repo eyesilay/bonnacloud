@@ -115,7 +115,7 @@ const translations = {
     companyPlaceholder: "Örn: Bonna, X Bayii",
     regionPlaceholder: "Örn: ny, sg, se (Avrupa/Falkenstein için boş bırakın)",
     // 🌟 GİRİŞ EKRANI ETİKETLERİ
-    loginTitle: "Güvenli Bulut Alanına Giriş Yapın",
+    loginTitle: "Hoşgeldiniz!",
     signIn: "Giriş Yap",
     authenticating: "Kimlik Doğrulanıyor...",
     loginInvalidCredentials: "E-posta veya şifre hatalı.",
@@ -230,7 +230,7 @@ const translations = {
     companyPlaceholder: "e.g. Bonna, X Dealer",
     regionPlaceholder: "e.g. ny, sg, se (leave blank for Europe/Falkenstein)",
     // 🌟 GİRİŞ EKRANI ETİKETLERİ
-    loginTitle: "Sign in to Secure Cloud Space",
+    loginTitle: "Welcome!",
     signIn: "Sign In",
     authenticating: "Authenticating...",
     loginInvalidCredentials: "Invalid email or password.",
