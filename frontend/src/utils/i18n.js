@@ -113,7 +113,15 @@ const translations = {
     no: "Hayır",
     roleNamePlaceholder: "Örn: Ekip, Müşteri",
     companyPlaceholder: "Örn: Bonna, X Bayii",
-    regionPlaceholder: "Örn: ny, sg, se (Avrupa/Falkenstein için boş bırakın)"
+    regionPlaceholder: "Örn: ny, sg, se (Avrupa/Falkenstein için boş bırakın)",
+    // 🌟 GİRİŞ EKRANI ETİKETLERİ
+    loginTitle: "Güvenli Bulut Alanına Giriş Yapın",
+    signIn: "Giriş Yap",
+    authenticating: "Kimlik Doğrulanıyor...",
+    loginInvalidCredentials: "E-posta veya şifre hatalı.",
+    loginServerConnectionError: "Sunucuya bağlanılamadı. Docker arka planda çalışıyor mu?",
+    loginSystemError: "Sistem Hatası",
+    loginDatabaseError: "Veritabanı bağlantı hatası."
   },
   en: {
     searchPlaceholder: "Search...",
@@ -220,7 +228,15 @@ const translations = {
     no: "No",
     roleNamePlaceholder: "e.g. Team, Customer",
     companyPlaceholder: "e.g. Bonna, X Dealer",
-    regionPlaceholder: "e.g. ny, sg, se (leave blank for Europe/Falkenstein)"
+    regionPlaceholder: "e.g. ny, sg, se (leave blank for Europe/Falkenstein)",
+    // 🌟 GİRİŞ EKRANI ETİKETLERİ
+    loginTitle: "Sign in to Secure Cloud Space",
+    signIn: "Sign In",
+    authenticating: "Authenticating...",
+    loginInvalidCredentials: "Invalid email or password.",
+    loginServerConnectionError: "Could not connect to server. Is Docker running in the background?",
+    loginSystemError: "System Error",
+    loginDatabaseError: "Database connection error."
   }
 }
 
