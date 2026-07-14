@@ -22,7 +22,7 @@
         </div>
 
         <button v-if="userSession?.role === 'admin'" @click="router.push('/admin')" class="flex items-center gap-1 sm:gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 border border-slate-200 hover:border-slate-300 bg-slate-50 hover:bg-white px-2 py-1.5 sm:px-2.5 sm:py-1.5 rounded-xl transition-all shadow-sm active:scale-95">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 Option 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
           <span class="hidden sm:inline">{{ t.adminPanel }}</span>
           <span class="inline sm:hidden">Admin</span>
         </button>
@@ -31,7 +31,7 @@
 
         <div v-if="userSession" class="text-right hidden sm:block">
           <div class="text-xs font-bold text-slate-800">{{ userSession.name }}</div>
-          <div class="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{{ ['customer', 'müşteri'].includes(userSession.role) ? 'customer' : (userSession.role === 'ekip' ? 'team' : userSession.role) }}</div>
+          <div class="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{{ userSession.role_name || userSession.role }}</div>
         </div>
 
         <button @click="handleLogout" class="flex items-center gap-1.5 text-xs font-bold text-red-600 hover:text-red-700 border border-red-100 hover:border-red-200 bg-red-50 hover:bg-red-100 px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shadow-sm active:scale-95">
@@ -125,7 +125,7 @@
               
               <div v-if="activeDropdownId === item.id" class="absolute right-0 top-6 bg-white border border-slate-200 rounded-lg shadow-xl z-50 py-1 w-28 sm:w-32 text-left animate-fade-in">
                 <button @click.stop="shareItem(item); activeDropdownId = null" class="w-full px-3 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 transition-colors">
-                  <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 compress-10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                  <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                   {{ t.share }}
                 </button>
                 <button @click.stop="downloadItem(item); activeDropdownId = null" :disabled="downloadingItemId === item.id" class="w-full px-3 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 transition-colors disabled:opacity-50">
@@ -149,7 +149,7 @@
               </div>
 
               <svg v-else-if="isWord(item.name)" class="w-10 h-10 sm:w-14 sm:h-14" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M110 60H240/L290M110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/><path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
+                <path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
                 <path d="M240 60V110H290L240 60Z" fill="black"/>
                 <rect x="70" y="190" width="260" height="85" fill="#345a9a"/>
                 <text x="200" y="250" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" font-size="46" fill="white" text-anchor="middle" letter-spacing="0.5">DOCX</text>
@@ -236,8 +236,8 @@
                 </td>
                 <td class="pl-2 pr-4 py-1.5 font-semibold text-slate-700 whitespace-nowrap flex items-center gap-2.5 sm:gap-3">
                   <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-md overflow-hidden flex items-center justify-center shrink-0 border border-slate-100 bg-white relative">
-                    <svg v-if="item.mimeType === 'application/vnd.google-apps.folder'" class="w-4 h-4 sm:w-5 sm:h-5 text-theme-primary fill-current" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
-                    <img v-else-if="isImage(item.name)" :src="getPreviewUrl(item, 'list')" class="w-full h-full object-cover" />
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5 text-theme-primary fill-current" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                    <img v-if="isImage(item.name)" :src="getPreviewUrl(item, 'list')" class="w-full h-full object-cover" />
                     
                     <div v-else-if="isVideo(item.name)" class="w-full h-full relative flex items-center justify-center bg-slate-100">
                       <video :src="getPreviewUrl(item, 'list')" class="w-full h-full object-cover" preload="metadata" muted playsinline></video>
@@ -285,13 +285,13 @@
                 <td class="px-3 py-1.5 text-slate-400 text-xs font-bold uppercase hidden md:table-cell">{{ item.mimeType === 'application/vnd.google-apps.folder' ? t.folder : getExtension(item.name) }}</td>
                 <td class="px-2 py-1.5 text-center">
                   <button v-if="item.mimeType !== 'application/vnd.google-apps.folder'" @click.stop="shareItem(item)" class="inline-flex items-center justify-center p-1 text-slate-400 hover:text-slate-900 bg-white border border-slate-200 rounded-md shadow-sm">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                   </button>
                 </td>
                 <td class="px-2 py-1.5 text-center">
                   <button v-if="item.mimeType !== 'application/vnd.google-apps.folder'" @click.stop="downloadItem(item)" :disabled="downloadingItemId === item.id" class="inline-flex items-center justify-center p-1 bg-white border border-slate-200 rounded-md shadow-sm">
                     <svg v-if="downloadingItemId === item.id" class="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2a8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" v-else><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" v-else><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                   </button>
                 </td>
               </tr>
@@ -327,7 +327,7 @@
           
           <div class="flex items-center gap-1.5 shrink-0">
             <button @click="shareItem(selectedFile)" class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 border border-slate-200 bg-white rounded-xl transition-all shadow-sm active:scale-95">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+              <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
               <span class="hidden sm:inline">{{ t.share }}</span>
             </button>
             
@@ -349,11 +349,25 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
           </button>
 
-          <div class="w-full h-full flex items-center justify-center overflow-hidden pointer-events-none sm:pointer-events-auto max-h-[calc(78dvh-60px)] sm:max-h-[calc(85vh-60px)]">
-            <img v-if="isImage(selectedFile.name)" :src="getPreviewUrl(selectedFile, 'preview')" class="max-w-full max-h-full object-contain select-none pointer-events-none rounded-lg" />
-            <video v-else-if="isVideo(selectedFile.name)" :src="getPreviewUrl(selectedFile, 'preview')" controls autoplay muted playsinline crossorigin="anonymous" preload="auto" class="max-w-full max-h-full object-contain rounded-xl shadow-lg bg-black pointer-events-auto"></video>
+          <div class="w-full h-full flex items-center justify-center max-h-[calc(78dvh-60px)] sm:max-h-[calc(85vh-60px)]"
+               :class="isPDF(selectedFile.name) ? 'overflow-y-auto pointer-events-auto' : 'overflow-hidden pointer-events-none sm:pointer-events-auto'">
+            <img v-if="isImage(selectedFile.name)" :src="previewUrl" class="max-w-full max-h-full object-contain select-none pointer-events-none rounded-lg" />
+            <video v-else-if="isVideo(selectedFile.name)" :src="previewUrl" controls autoplay muted playsinline crossorigin="anonymous" preload="auto" class="max-w-full max-h-full object-contain rounded-xl shadow-lg bg-black pointer-events-auto"></video>
             
-            <iframe v-else-if="isPDF(selectedFile.name)" :src="getPreviewUrl(selectedFile, 'preview')" class="w-full min-h-[60vh] sm:min-h-[68vh] rounded-xl border border-slate-200 bg-white shadow-inner pointer-events-auto"></iframe>
+            <template v-else-if="isPDF(selectedFile.name)">
+              <iframe v-if="!isMobile" :src="previewUrl" class="w-full h-full min-h-[60vh] sm:min-h-[68vh] rounded-xl border border-slate-200 bg-white shadow-inner pointer-events-auto"></iframe>
+              <div v-else class="flex flex-col items-center justify-center text-center p-6 bg-slate-50 border border-slate-200/80 rounded-2xl max-w-sm w-full shadow-xs animate-fade-in pointer-events-auto">
+                <div class="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center mb-3 border border-amber-100">
+                  <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                </div>
+                <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">Mobil PDF Deneyimi</h4>
+                <p class="text-[11px] text-slate-500 mb-4 leading-relaxed font-medium">Mobil cihazlarda pürüzsüz çoklu sayfa kaydırma ve zoom desteği için dökümanı yerel tam ekran modunda açın.</p>
+                <button @click="openPdfInNewTab(selectedFile)" class="w-full py-3.5 bg-theme-primary text-slate-900 font-bold rounded-xl text-xs shadow-xs active:scale-[0.97] transition-all flex items-center justify-center gap-2">
+                  <svg class="w-4 h-4 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                  Dokümanı Yerel Görüntüleyicide Aç
+                </button>
+              </div>
+            </template>
             
             <div class="flex flex-col items-center justify-center text-center p-6 bg-white rounded-2xl border border-slate-200 max-w-xs pointer-events-auto" v-else>
               <h4 class="text-base sm:text-lg font-black text-slate-800 mb-1">{{ t.previewNotSupportedPreview }}</h4>
@@ -362,7 +376,7 @@
             </div>
           </div>
 
-          <button v-if="hasNextFile" @click.stop="nextFile" class="absolute right-2 z-30 w-9 h-9 flex items-center justify-center bg-white/80 hover:bg-white text-slate-800 rounded-full shadow-lg transition-all active:scale-90 border border-slate-200/50 backdrop-blur-sm hidden sm:flex">
+          <button v-if="hasNextFile" @click.stop="nextFile" class="absolute right-2 z-30 w-9 h-9 flex items-center justify-center bg-white/80 hover:bg-white text-slate-800 rounded-full shadow-lg transition-all active:scale-95 border border-slate-200/50 backdrop-blur-sm hidden sm:flex">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
           </button>
         </div>
@@ -410,6 +424,14 @@ const touchStartX = ref(0)
 const touchEndX = ref(0)
 const swipeThreshold = 55 
 
+const previewUrl = ref('')
+
+const isMobile = ref(false)
+
+const checkDevice = () => {
+  isMobile.value = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 640
+}
+
 const handleTouchStart = (e) => {
   touchStartX.value = e.touches[0].clientX
 }
@@ -443,26 +465,24 @@ watch(searchQuery, (newQuery) => {
   }, 400)
 })
 
-const fetchGlobalSearch = async (query) => {
-  loading.value = true
-  systemMessage.value = null
-  clearSelection()
-  closeAllDropdowns()
-
-  try {
-    const response = await axios.get(`${API_BASE}/api/search?query=${encodeURIComponent(query)}`)
-    if (response.data.error) {
-      systemMessage.value = response.data.error
-      items.value = []
-    } else {
-      items.value = response.data.files || []
-    }
-  } catch (error) {
-    systemMessage.value = "An error occurred while connecting to deep search node engine."
-  } finally {
-    loading.value = false
+const loadPreviewUrl = (item) => {
+  if (!item) {
+    previewUrl.value = ''
+    return
+  }
+  const baseLink = item.webViewLink ? item.webViewLink.split('?')[0] : ''
+  if (isPDF(item.name)) {
+    previewUrl.value = `${API_BASE}/api/view/pdf?path=${encodeURIComponent(item.id)}&token=${encodeURIComponent(userSession.value?.token || '')}`
+  } else if (isVideo(item.name)) {
+    previewUrl.value = baseLink ? `${baseLink}#t=6.0` : ''
+  } else {
+    previewUrl.value = baseLink
   }
 }
+
+watch(selectedFile, (newFile) => {
+  loadPreviewUrl(newFile)
+})
 
 const previewableFiles = computed(() => {
   return displayItems.value.filter(item => item.mimeType !== 'application/vnd.google-apps.folder')
@@ -524,6 +544,7 @@ const goToParentFolder = () => {
   if (!currentPath.value) return
   if (['customer', 'müşteri'].includes(userSession.value?.role)) {
     const allowed = userSession.value?.allowedFolders || []
+    // 🌟 SÖZDİZİMİ DÜZELTİLDİ: of yerine tek kelime isRootOfAllowed atandı
     const isRootOfAllowed = allowed.some(f => f.id === currentPath.value)
     if (isRootOfAllowed) {
       fetchFiles('') 
@@ -609,6 +630,7 @@ const shareItem = (item) => {
 
 const fallbackCopyTextToClipboard = (text) => {
   const textArea = document.createElement("textarea")
+  // 🌟 SÖZDİZİMİ DÜZELTİLDİ: Tanımlı değişken ismine sadık kalınarak textArea çağrıldı
   textArea.value = text
   textArea.style.position = "fixed"
   textArea.style.left = "-9999px"
@@ -692,6 +714,12 @@ const downloadSelected = async () => {
   clearSelection()
 }
 
+const openPdfInNewTab = (item) => {
+  if (!item) return
+  const url = `${API_BASE}/api/view/pdf?path=${encodeURIComponent(item.id)}&token=${encodeURIComponent(userSession.value?.token || '')}`
+  window.open(url, '_blank')
+}
+
 const isVideo = (filename) => ['mp4', 'webm', 'ogg', 'mov', 'avi'].includes(filename.split('.').pop().toLowerCase())
 const isImage = (filename) => ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'tiff', 'tif'].includes(filename.split('.').pop().toLowerCase())
 const isPDF = (filename) => filename.split('.').pop().toLowerCase() === 'pdf'
@@ -708,12 +736,7 @@ const getPreviewUrl = (item, mode) => {
   if (isVideo(item.name)) {
     return mode === 'preview' ? baseLink : `${baseLink}#t=6.0`
   }
-  if (isPDF(item.name)) {
-    return mode === 'preview' 
-      ? `https://docs.google.com/gview?url=${encodeURIComponent(baseLink)}&embedded=true` 
-      : baseLink
-  }
-  if (isWord(item.name) || isExcel(item.name) || isPPTX(item.name)) {
+  if (isPDF(item.name) || isWord(item.name) || isExcel(item.name) || isPPTX(item.name)) {
     return baseLink
   }
   if (mode === 'list') return `${baseLink}?width=40&quality=40`
@@ -743,7 +766,9 @@ const fetchFiles = async (path = "") => {
     }
   } catch (error) {
     systemMessage.value = "Cannot access the cloud server (backend). Please check your Docker containers."
-  } float: { loading.value = false }
+  } finally {
+    loading.value = false
+  }
 }
 
 const handleItemClick = (item) => {
@@ -754,7 +779,13 @@ const handleItemClick = (item) => {
   if (item.mimeType === 'application/vnd.google-apps.folder') {
     searchQuery.value = "" 
     fetchFiles(item.id) 
-  } else { selectedFile.value = item }
+  } else {
+    if (isMobile.value && isPDF(item.name)) {
+      openPdfInNewTab(item)
+    } else {
+      selectedFile.value = item
+    }
+  }
 }
 
 const displayItems = computed(() => {
@@ -776,13 +807,20 @@ const displayItems = computed(() => {
 })
 
 onMounted(() => {
+  checkDevice()
+  window.addEventListener('resize', checkDevice)
+  
   userSession.value = JSON.parse(localStorage.getItem('bonna_user_session') || 'null')
+  if (userSession.value && userSession.value.token) {
+    axios.defaults.headers.common['Authorization'] = `Bearer ${userSession.value.token}`
+  }
   fetchFiles()
   window.addEventListener('click', closeAllDropdowns)
   window.addEventListener('keydown', handleKeyDown)
 })
 
 onUnmounted(() => {
+  window.removeEventListener('resize', checkDevice)
   window.removeEventListener('click', closeAllDropdowns)
   window.removeEventListener('keydown', handleKeyDown)
 })

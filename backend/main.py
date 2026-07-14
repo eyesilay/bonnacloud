@@ -10,7 +10,7 @@ import threading
 from typing import List, Optional
 from datetime import datetime, timedelta
 
-from fastapi import FastAPI, HTTPException, Depends, Security, UploadFile, File, BackgroundTasks  
+from fastapi import FastAPI, HTTPException, Depends, Security, UploadFile, File, BackgroundTasks, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -184,7 +184,8 @@ def background_index_crawl():
         queue = [""]
         folders_scanned = 0
         
-        while queue and folders_scanned < 1500:
+        # 🌟 GÜNCELLEME: Klasör tarama tavan sınırı 1500'den 100.000'e çekildi. 32.000+ dosyanızın tamamı taranacaktır.
+        while queue and folders_scanned < 100000:
             current_path = queue.pop(0)
             folders_scanned += 1
             url = f"{base_url}/{urllib.parse.quote(current_path, safe='/')}/" if current_path else f"{base_url}/"
@@ -211,7 +212,7 @@ def background_index_crawl():
                 
         GLOBAL_FILE_INDEX = compiled_list
         LAST_INDEX_TIME = datetime.utcnow()
-        print(f"--- BonnaCloud Haftalık İndeksleme Tamamlandı: {len(GLOBAL_FILE_INDEX)} nesne hafızaya alındı. ---")
+        print(f"--- BonnaCloud İndeksleme Tamamlandı: {len(GLOBAL_FILE_INDEX)} nesne hafızaya alındı. ---")
     except Exception as e:
         print(f"İndeksleme sırasında hata oluştu: {e}")
     finally:
@@ -352,7 +353,18 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     
     token = create_access_token(data={"sub": user.email, "role": user.role})
     resolved_folders = user.role_rel.allowed_folders if user.role_rel else (user.allowed_folders if user.allowed_folders else [])
-    return {"id": user.id, "name": user.name or "System Administrator", "email": user.email, "role": user.role, "role_id": user.role_id, "allowedFolders": resolved_folders, "isActive": user.is_active, "token": token}
+    
+    return {
+        "id": user.id, 
+        "name": user.name or "System Administrator", 
+        "email": user.email, 
+        "role": user.role, 
+        "role_name": user.role_rel.name if user.role_rel else "Customer",
+        "role_id": user.role_id, 
+        "allowedFolders": resolved_folders, 
+        "isActive": user.is_active, 
+        "token": token
+    }
 
 @app.get("/api/cdn")
 def get_cdn_settings(current_user: UserDB = Depends(get_current_user)):
@@ -466,6 +478,56 @@ def download_file(path: str, current_user: UserDB = Depends(get_current_user)):
         if resp.status_code != 200: raise HTTPException(status_code=404, detail="Requested object not found.")
         return StreamingResponse(resp.iter_content(chunk_size=8192), media_type=resp.headers.get("Content-Type", "application/octet-stream"), headers={"Content-Disposition": f"attachment; filename={urllib.parse.quote(path.split('/')[-1])}"})
     except: raise HTTPException(status_code=502, detail="CDN network streaming error.")
+
+@app.get("/api/view/pdf")
+def view_pdf(path: str, token: str, request: Request, db: Session = Depends(get_db)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None: raise HTTPException(status_code=401, detail="Invalid token")
+    except JWTError: raise HTTPException(status_code=401, detail="Invalid token")
+    
+    user = db.query(UserDB).filter(UserDB.email == email).first()
+    if not user or not user.is_active: raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    allowed_folders = user.role_rel.allowed_folders if user.role_rel else (user.allowed_folders or [])
+    if user.role in ["customer", "müşteri"]:
+        if not check_hierarchical_permission(path, allowed_folders): raise HTTPException(status_code=403, detail="Forbidden")
+            
+    cfg = load_cdn_config()
+    url = f"{get_bunny_base_url()}/{urllib.parse.quote(clean_path(path), safe='/')}"
+    
+    bunny_headers = {"AccessKey": cfg.get("BUNNY_STORAGE_PASSWORD")}
+    client_range = request.headers.get("range")
+    if client_range:
+        bunny_headers["Range"] = client_range
+        
+    try:
+        resp = requests.get(url, headers=bunny_headers, stream=True)
+        if resp.status_code not in [200, 206]: 
+            raise HTTPException(status_code=resp.status_code, detail="CDN stream failure")
+        
+        response_headers = {
+            "Content-Type": "application/pdf",
+            "Content-Disposition": "inline",
+            "Accept-Ranges": "bytes",
+            "X-Frame-Options": "ALLOWALL",
+            "Content-Security-Policy": "frame-ancestors 'self' *",
+            "Cache-Control": "public, max-age=3600"
+        }
+        
+        if "Content-Range" in resp.headers:
+            response_headers["Content-Range"] = resp.headers["Content-Range"]
+        if "Content-Length" in resp.headers:
+            response_headers["Content-Length"] = resp.headers["Content-Length"]
+            
+        return StreamingResponse(
+            resp.iter_content(chunk_size=8192), 
+            status_code=resp.status_code,
+            headers=response_headers
+        )
+    except Exception as e: 
+        raise HTTPException(status_code=502, detail=f"CDN proxy loop error: {str(e)}")
 
 @app.post("/download/zip")
 def download_zip(payload: ZipDownloadRequest, current_user: UserDB = Depends(get_current_user)):

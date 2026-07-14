@@ -13,6 +13,10 @@ export default {
           secondary: "var(--color-secondary, #F8FAFC)", // Varsayılan: Açık Gri
           accent: "var(--color-accent, #F59E0B)",       // Varsayılan: Vurgu Sarısı
         }
+      },
+      // 🌟 GÜNCELLEME: font-sans kullanan her yer otomatik olarak Alexandria olur
+      fontFamily: {
+        sans: ['Alexandria', 'sans-serif'],
       }
     },
   },

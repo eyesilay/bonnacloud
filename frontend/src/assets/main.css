@@ -7,3 +7,44 @@
   --color-secondary: #F8FAFC;
   --color-accent: #D4AF37;
 }
+
+body {
+  font-family: 'Alexandria', sans-serif;
+  
+  /* 🌟 1. FONT SMOOTHING (ANTIALIASING)
+     Tarayıcının font kenarlarındaki pikselleri yumuşatmasını sağlar. 
+     Yazıları anında daha ince, keskin ve premium gösterir; o kaba kalınlığı kırar. */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  
+  /* 🌟 2. GLOBAL FERAHLAŞTIRMA
+     Harflerin yan yana çok fazla sıkışmasını engellemek için çok hafif bir nefes payı ekler. */
+  letter-spacing: 0.015em;
+}
+
+/* 🌟 3. DENGELİ KALINLIK OPTİMİZASYONU
+   Alexandria fontunun 900 (Black) ve 700 (Bold) değerleri kutu gibi çok kalın durur.
+   HTML kodlarındaki sınıfları bozmadan, CSS ezmesiyle font ağırlıklarını estetik seviyeye çekiyoruz. */
+.font-black {
+  font-weight: 700 !important; /* 900 yerine gözü yormayan 700 (Bold) haritalayalım */
+}
+
+.font-bold {
+  font-weight: 500 !important; /* 700 yerine daha kibar duran 500 (Medium) haritalayalım */
+}
+
+.font-semibold {
+  font-weight: 500 !important;
+}
+
+/* 🌟 4. HARF SIKIŞIKLIĞINI (TRACKING) NÖTRLEME
+   Projedeki 'tracking-tight' (sıkışık yazı) sınıfları Alexandria fontunu tamamen boğuyordu.
+   Bu sıkışıklık etkisini yumuşatarak iç içe geçme problemini kökten çözüyoruz. */
+.tracking-tight {
+  letter-spacing: 0em !important; /* Sıkışıklığı tamamen iptal edip ferahlatıyoruz */
+}
+
+.tracking-tighter {
+  letter-spacing: -0.01em !important; /* Aşırı sıkışıklığı hafif bir düzeye çekiyoruz */
+}

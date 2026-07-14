@@ -92,7 +92,10 @@
           <div v-for="role in roles" :key="role.id" class="border border-slate-200 bg-slate-50/40 rounded-xl p-4 flex flex-col justify-between hover:shadow-md transition-all">
             <div>
               <div class="flex justify-between items-start">
-                <h3 class="font-black text-slate-900 text-sm tracking-tight">{{ role.name }}</h3>
+                <div class="flex flex-col gap-1">
+                  <h3 class="font-black text-slate-900 text-sm tracking-tight">{{ role.name }}</h3>
+                  <span v-if="role.isAdmin" class="text-[9px] bg-red-600 text-white font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider w-max">Admin Yetkisi</span>
+                </div>
                 <span class="text-[10px] bg-slate-200 text-slate-700 font-bold px-1.5 py-0.5 rounded">ID: {{ role.id }}</span>
               </div>
               <p class="text-[10px] text-slate-400 font-bold uppercase mt-3 tracking-wider">{{ t.authorizedPaths }}</p>
@@ -160,9 +163,15 @@
         <h3 class="text-sm font-black text-slate-900 mb-3">{{ roleForm.id ? t.editRoleTitle : t.addRoleTitle }}</h3>
         
         <div class="space-y-3.5 flex-1 flex flex-col min-h-0 overflow-hidden">
-          <div class="shrink-0">
-            <label class="block text-slate-600 mb-1">{{ t.roleName }}</label>
-            <input v-model="roleForm.name" type="text" :placeholder="t.roleNamePlaceholder" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium focus:outline-none focus:border-slate-900 focus:bg-white" />
+          <div class="shrink-0 flex gap-4 items-end">
+            <div class="flex-1">
+              <label class="block text-slate-600 mb-1">{{ t.roleName }}</label>
+              <input v-model="roleForm.name" type="text" :placeholder="t.roleNamePlaceholder" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium focus:outline-none focus:border-slate-900 focus:bg-white" />
+            </div>
+            <div class="flex items-center gap-2 pb-2.5 select-none shrink-0 border border-slate-200 px-4 py-2 bg-slate-50 rounded-xl shadow-xs">
+              <input v-model="roleForm.isAdmin" type="checkbox" id="roleAdminChk" class="w-4 h-4 text-red-600 rounded border-slate-300 focus:ring-0 cursor-pointer shadow-xs" />
+              <label for="roleAdminChk" class="text-slate-800 font-black cursor-pointer text-xs">🛡️ Admin Paneli Giriş Yetkisi</label>
+            </div>
           </div>
           
           <div class="shrink-0 flex flex-col">
@@ -337,7 +346,7 @@ const lastSelectedIndex = ref(null)
 
 const cdnForm = ref({ storageName: "", storagePassword: "", pullZoneUrl: "", region: "" })
 const userForm = ref({ id: null, name: "", email: "", password: "", role_id: null, company: "", isActive: true })
-const roleForm = ref({ id: null, name: "", allowedFolders: [] })
+const roleForm = ref({ id: null, name: "", allowedFolders: [], isAdmin: false })
 
 const isIndexingStatus = ref(false)
 const lastIndexTimeDisplay = ref("Never")
@@ -385,7 +394,7 @@ const fetchIndexStatus = async () => {
 const triggerManualIndex = async () => {
   isIndexingStatus.value = true
   try {
-    const resp = await axios.post(`${window.location.origin}/api/cdn/index`)
+    await axios.post(`${window.location.origin}/api/cdn/index`)
     triggerToast(t.value.mappingCdn, "success")
     startStatusPolling()
   } catch (err) {
@@ -553,9 +562,9 @@ const handleItemToggle = (event, item) => {
 
 const openRoleModal = async (role = null) => {
   if (role) {
-    roleForm.value = { id: role.id, name: role.name, allowedFolders: JSON.parse(JSON.stringify(role.allowedFolders)) }
+    roleForm.value = { id: role.id, name: role.name, allowedFolders: JSON.parse(JSON.stringify(role.allowedFolders)), isAdmin: role.isAdmin || false }
   } else {
-    roleForm.value = { id: null, name: "", allowedFolders: [] }
+    roleForm.value = { id: null, name: "", allowedFolders: [], isAdmin: false }
   }
   showRoleModal.value = true
   await adminBrowseFolder("") 
@@ -666,3 +675,13 @@ onMounted(() => {
 
 onUnmounted(() => { if (pollingInterval) clearInterval(pollingInterval) })
 </script>
+
+<style scoped>
+.animate-fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>

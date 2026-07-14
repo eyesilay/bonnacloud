@@ -1,13 +1,6 @@
 <template>
   <div class="min-h-screen flex items-center justify-center bg-slate-50 font-sans p-4 relative select-none">
     
-    <div class="absolute top-4 right-4 flex items-center border border-slate-200 rounded-xl px-2 py-1.5 bg-white text-xs font-bold shadow-sm z-50">
-      <select :value="currentLang" @change="setLanguage($event.target.value)" class="bg-transparent border-none outline-none cursor-pointer pr-1 text-slate-800 font-bold focus:ring-0 text-xs">
-        <option value="tr">TR</option>
-        <option value="en">EN</option>
-      </select>
-    </div>
-
     <div class="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 border border-slate-100 relative">
       <div class="flex flex-col items-center justify-center mb-6 text-center">
         <img src="https://bonna-website.b-cdn.net/bonnacloud-assets/BonnaCloud-Logo.png" alt="Bonna Cloud" class="h-14 w-auto object-contain mb-4" />
@@ -38,6 +31,16 @@
           </svg>
           {{ isLoading ? t.authenticating : t.signIn }}
         </button>
+
+        <!-- 🌐 DİL SEÇİCİ DROPDOWN MÖDÜLÜ (GİRİŞ YAP BUTONUNUN ALTINA MERKEZLENMİŞ) -->
+        <div class="flex justify-center items-center pt-2">
+          <div class="flex items-center border border-slate-200 rounded-xl px-2.5 py-1.5 bg-slate-50 text-xs font-bold shadow-xs">
+            <select :value="currentLang" @change="setLanguage($event.target.value)" class="bg-transparent border-none outline-none cursor-pointer pr-1 text-slate-800 font-bold focus:ring-0 text-xs">
+              <option value="tr">TR</option>
+              <option value="en">EN</option>
+            </select>
+          </div>
+        </div>
       </form>
     </div>
   </div>

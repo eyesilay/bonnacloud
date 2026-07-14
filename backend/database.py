@@ -13,6 +13,7 @@ class RoleDB(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
     allowed_folders = Column(JSON, default=[]) # Rol düzeyindeki yetkili klasörler
+    is_admin = Column(Boolean, default=False) # 🛡️ Admin paneline giriş ve yönetim yetkisi
     
     # Rol silindiğinde veya güncellendiğinde bağlı kullanıcıları izlemek için ilişki
     users = relationship("UserDB", back_populates="role_rel")
