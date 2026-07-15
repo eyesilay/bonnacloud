@@ -12,10 +12,9 @@ class RoleDB(Base):
     __tablename__ = "roles"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
-    allowed_folders = Column(JSON, default=[]) # Rol düzeyindeki yetkili klasörler
-    is_admin = Column(Boolean, default=False) # 🛡️ Admin paneline giriş ve yönetim yetkisi
+    allowed_folders = Column(JSON, default=[])
+    is_admin = Column(Boolean, default=False)
     
-    # Rol silindiğinde veya güncellendiğinde bağlı kullanıcıları izlemek için ilişki
     users = relationship("UserDB", back_populates="role_rel")
 
 class UserDB(Base):
@@ -24,12 +23,13 @@ class UserDB(Base):
     name = Column(String)
     email = Column(String, unique=True, index=True)
     password = Column(String)
-    role = Column(String, default="müşteri") # Eski sürümlerle uyumluluk için (admin, müşteri vb.)
-    role_id = Column(Integer, ForeignKey("roles.id"), nullable=True) # Yeni dinamik rol bağlantısı
+    role = Column(String, default="müşteri")
+    role_id = Column(Integer, ForeignKey("roles.id"), nullable=True)
     company = Column(String, nullable=True)
-    allowed_folders = Column(JSON, default=[]) # Bireysel özel yetki verilmek istenirse (yedek kalkan)
+    allowed_folders = Column(JSON, default=[])
     is_active = Column(Boolean, default=True)
     failed_login_attempts = Column(Integer, default=0)
     lockout_until = Column(DateTime, nullable=True)
+    is_superadmin = Column(Boolean, default=False) # 👑 Terminal kontrollü Sudo koruma bayrağı
 
     role_rel = relationship("RoleDB", back_populates="users")

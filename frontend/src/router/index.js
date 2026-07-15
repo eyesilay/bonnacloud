@@ -39,7 +39,8 @@ router.beforeEach((to, from, next) => {
     return next('/login')
   }
 
-  if (to.meta.requiresAdmin && (!userSession || userSession.role !== 'admin')) {
+  // 🌟 GÜNCELLEME: Admin paneline geçişte artık "superadmin" rolü de yetkili kabul ediliyor
+  if (to.meta.requiresAdmin && (!userSession || (userSession.role !== 'admin' && userSession.role !== 'superadmin'))) {
     return next('/dashboard')
   }
 

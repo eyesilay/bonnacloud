@@ -21,13 +21,13 @@
           </select>
         </div>
 
-        <button v-if="userSession?.role === 'admin'" @click="router.push('/admin')" class="flex items-center gap-1 sm:gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 border border-slate-200 hover:border-slate-300 bg-slate-50 hover:bg-white px-2 py-1.5 sm:px-2.5 sm:py-1.5 rounded-xl transition-all shadow-sm active:scale-95">
+        <button v-if="userSession?.role === 'admin' || userSession?.role === 'superadmin'" @click="router.push('/admin')" class="flex items-center gap-1 sm:gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 border border-slate-200 hover:border-slate-300 bg-slate-50 hover:bg-white px-2 py-1.5 sm:px-2.5 sm:py-1.5 rounded-xl transition-all shadow-sm active:scale-95">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
           <span class="hidden sm:inline">{{ t.adminPanel }}</span>
           <span class="inline sm:hidden">Admin</span>
         </button>
 
-        <div v-if="userSession?.role === 'admin'" class="h-5 w-px bg-slate-200 hidden sm:block"></div>
+        <div v-if="userSession?.role === 'admin' || userSession?.role === 'superadmin'" class="h-5 w-px bg-slate-200 hidden sm:block"></div>
 
         <div v-if="userSession" class="text-right hidden sm:block">
           <div class="text-xs font-bold text-slate-800">{{ userSession.name }}</div>
@@ -106,90 +106,101 @@
         </div>
 
         <div v-if="viewMode === 'grid'" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3 sm:gap-4">
-          <div v-for="item in displayItems" :key="item.id" @click="handleItemClick(item)" :class="{'ring-2 ring-theme-primary bg-slate-50': isSelected(item)}" class="group bg-slate-50/40 hover:bg-slate-50 border border-transparent hover:border-slate-200 rounded-xl p-2.5 cursor-pointer hover:shadow-md transition-all duration-300 flex flex-col items-center justify-between text-center min-h-[120px] sm:min-h-[145px] relative">
-            
-            <div v-if="item.mimeType !== 'application/vnd.google-apps.folder'" 
-                 :class="selectedItems.length > 0 ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
-                 class="absolute top-1.5 left-1.5 z-10 transition-opacity duration-200">
-              <div @click.stop="toggleSelection(item)" class="w-4 h-4 rounded border border-slate-300 bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm" :class="{'bg-theme-primary border-theme-primary': isSelected(item)}">
-                <svg v-if="isSelected(item)" class="w-3 h-3 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-              </div>
+          <template v-for="item in displayItems" :key="item.id">
+            <div v-if="item.isHeader" @click="toggleGroup(item.groupKey)" class="col-span-full text-left mt-6 mb-2 first:mt-0 flex items-center gap-2 cursor-pointer select-none group/hdr border-b border-slate-100 pb-1.5">
+              <svg class="w-3.5 h-3.5 text-slate-400 group-hover/hdr:text-slate-700 transition-transform duration-150 shrink-0" :class="{'rotate-[-90deg]': collapsedGroups[item.groupKey]}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+              </svg>
+              <span class="text-xs font-bold text-slate-700 group-hover/hdr:text-blue-600 transition-colors uppercase tracking-wider">{{ item.label }}</span>
+              <span class="text-slate-400 text-xs font-bold">({{ item.count }})</span>
+              <div class="flex-1 h-px bg-slate-200/70 ml-2"></div>
             </div>
 
-            <div v-if="item.mimeType !== 'application/vnd.google-apps.folder'" 
-                 :class="activeDropdownId === item.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
-                 class="absolute top-1.5 right-1.5 z-20 transition-opacity duration-200" @click.stop>
-              <button @click.stop="toggleDropdown(item.id)" class="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 rounded-md shadow-sm transition-colors bg-white/90 backdrop-blur-sm">
-                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
-              </button>
+            <div v-else @click="handleItemClick(item)" :class="{'ring-2 ring-theme-primary bg-slate-50': isSelected(item)}" class="group bg-slate-50/40 hover:bg-slate-50 border border-transparent hover:border-slate-200 rounded-xl p-2.5 cursor-pointer hover:shadow-md transition-all duration-300 flex flex-col items-center justify-between text-center min-h-[120px] sm:min-h-[145px] relative">
               
-              <div v-if="activeDropdownId === item.id" class="absolute right-0 top-6 bg-white border border-slate-200 rounded-lg shadow-xl z-50 py-1 w-28 sm:w-32 text-left animate-fade-in">
-                <button @click.stop="shareItem(item); activeDropdownId = null" class="w-full px-3 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 transition-colors">
-                  <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                  {{ t.share }}
-                </button>
-                <button @click.stop="downloadItem(item); activeDropdownId = null" :disabled="downloadingItemId === item.id" class="w-full px-3 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 transition-colors disabled:opacity-50">
-                  <svg v-if="downloadingItemId === item.id" class="w-3 h-3 animate-spin text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                  <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" v-else><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                  {{ t.download }}
-                </button>
-              </div>
-            </div>
-
-            <div class="w-full aspect-square bg-white rounded-lg border border-slate-100 mb-1.5 flex items-center justify-center overflow-hidden relative shadow-sm group/media select-none">
-              <svg v-if="item.mimeType === 'application/vnd.google-apps.folder'" class="w-8 h-8 sm:w-11 sm:h-11 text-theme-primary fill-current" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
-              
-              <img v-else-if="isImage(item.name)" :src="getPreviewUrl(item, 'grid')" class="w-full h-full object-cover" loading="lazy" />
-              
-              <div v-else-if="isVideo(item.name)" class="w-full h-full relative flex items-center justify-center bg-slate-100">
-                <video :src="getPreviewUrl(item, 'grid')" class="w-full h-full object-cover" preload="metadata" muted playsinline></video>
-                <div class="absolute inset-0 bg-slate-900/10 group-hover/media:bg-slate-900/30 transition-colors flex items-center justify-center">
-                  <svg class="w-6 h-6 sm:w-8 sm:h-8 text-white drop-shadow-lg opacity-90 group-hover/media:opacity-100 group-hover/media:scale-110 transition-all" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              <div v-if="item.mimeType !== 'application/vnd.google-apps.folder'" 
+                   :class="selectedItems.length > 0 ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
+                   class="absolute top-1.5 left-1.5 z-10 transition-opacity duration-200">
+                <div @click.stop="toggleSelection(item)" class="w-4 h-4 rounded border border-slate-300 bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm" :class="{'bg-theme-primary border-theme-primary': isSelected(item)}">
+                  <svg v-if="isSelected(item)" class="w-3 h-3 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
                 </div>
               </div>
 
-              <svg v-else-if="isWord(item.name)" class="w-10 h-10 sm:w-14 sm:h-14" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
-                <path d="M240 60V110H290L240 60Z" fill="black"/>
-                <rect x="70" y="190" width="260" height="85" fill="#345a9a"/>
-                <text x="200" y="250" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" font-size="46" fill="white" text-anchor="middle" letter-spacing="0.5">DOCX</text>
-              </svg>
+              <div v-if="item.mimeType !== 'application/vnd.google-apps.folder'" 
+                   :class="activeDropdownId === item.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
+                   class="absolute top-1.5 right-1.5 z-20 transition-opacity duration-200" @click.stop>
+                <button @click.stop="toggleDropdown(item.id)" class="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 rounded-md shadow-sm transition-colors bg-white/90 backdrop-blur-sm">
+                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                </button>
+                
+                <div v-if="activeDropdownId === item.id" class="absolute right-0 top-6 bg-white border border-slate-200 rounded-lg shadow-xl z-50 py-1 w-28 sm:w-32 text-left animate-fade-in">
+                  <button @click.stop="shareItem(item); activeDropdownId = null" class="w-full px-3 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 transition-colors">
+                    <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                    {{ t.share }}
+                  </button>
+                  <button @click.stop="downloadItem(item); activeDropdownId = null" :disabled="downloadingItemId === item.id" class="w-full px-3 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 transition-colors disabled:opacity-50">
+                    <svg v-if="downloadingItemId === item.id" class="w-3 h-3 animate-spin text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" v-else><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    {{ t.download }}
+                  </button>
+                </div>
+              </div>
 
-              <svg v-else-if="isExcel(item.name)" class="w-10 h-10 sm:w-14 sm:h-14" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
-                <path d="M240 60V110H290L240 60Z" fill="black"/>
-                <rect x="70" y="190" width="260" height="85" fill="#137e43"/>
-                <text x="200" y="250" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" font-size="46" fill="white" text-anchor="middle" letter-spacing="0.5">XLSX</text>
-              </svg>
+              <div class="w-full aspect-square bg-white rounded-lg border border-slate-100 mb-1.5 flex items-center justify-center overflow-hidden relative shadow-sm group/media select-none">
+                <svg v-if="item.mimeType === 'application/vnd.google-apps.folder'" class="w-8 h-8 sm:w-11 sm:h-11 text-theme-primary fill-current" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                
+                <img v-else-if="isImage(item.name)" :src="getPreviewUrl(item, 'grid')" class="w-full h-full object-cover" loading="lazy" />
+                
+                <div v-else-if="isVideo(item.name)" class="w-full h-full relative flex items-center justify-center bg-slate-100">
+                  <video :src="getPreviewUrl(item, 'grid')" class="w-full h-full object-cover" preload="metadata" muted playsinline></video>
+                  <div class="absolute inset-0 bg-slate-900/10 group-hover/media:bg-slate-900/30 transition-colors flex items-center justify-center">
+                    <svg class="w-6 h-6 sm:w-8 sm:h-8 text-white drop-shadow-lg opacity-90 group-hover/media:opacity-100 group-hover/media:scale-110 transition-all" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                  </div>
+                </div>
 
-              <svg v-else-if="isPPTX(item.name)" class="w-10 h-10 sm:w-14 sm:h-14" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
-                <path d="M240 60V110H290L240 60Z" fill="black"/>
-                <rect x="70" y="190" width="260" height="85" fill="#d24715"/>
-                <text x="200" y="250" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" font-size="46" fill="white" text-anchor="middle" letter-spacing="0.5">PPTX</text>
-              </svg>
+                <svg v-else-if="isWord(item.name)" class="w-10 h-10 sm:w-14 sm:h-14" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
+                  <path d="M240 60V110H290L240 60Z" fill="black"/>
+                  <rect x="70" y="190" width="260" height="85" fill="#345a9a"/>
+                  <text x="200" y="250" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" font-size="46" fill="white" text-anchor="middle" letter-spacing="0.5">DOCX</text>
+                </svg>
 
-              <svg v-else-if="isPDF(item.name)" class="w-10 h-10 sm:w-14 sm:h-14" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
-                <path d="M240 60V110H290L240 60Z" fill="black"/>
-                <rect x="70" y="190" width="260" height="85" fill="#c42b2b"/>
-                <text x="200" y="250" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" font-size="46" fill="white" text-anchor="middle" letter-spacing="0.5">PDF</text>
-              </svg>
+                <svg v-else-if="isExcel(item.name)" class="w-10 h-10 sm:w-14 sm:h-14" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
+                  <path d="M240 60V110H290L240 60Z" fill="black"/>
+                  <rect x="70" y="190" width="260" height="85" fill="#137e43"/>
+                  <text x="200" y="250" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" font-size="46" fill="white" text-anchor="middle" letter-spacing="0.5">XLSX</text>
+                </svg>
 
-              <div class="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-50/50 rounded-lg p-1.5" v-else>
-                <svg class="w-5 h-5 opacity-60 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                <span class="text-[7px] font-bold uppercase tracking-wider text-slate-400">{{ getExtension(item.name) }}</span>
+                <svg v-else-if="isPPTX(item.name)" class="w-10 h-10 sm:w-14 sm:h-14" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
+                  <path d="M240 60V110H290L240 60Z" fill="black"/>
+                  <rect x="70" y="190" width="260" height="85" fill="#d24715"/>
+                  <text x="200" y="250" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" font-size="46" fill="white" text-anchor="middle" letter-spacing="0.5">PPTX</text>
+                </svg>
+
+                <svg v-else-if="isPDF(item.name)" class="w-10 h-10 sm:w-14 sm:h-14" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
+                  <path d="M240 60V110H290L240 60Z" fill="black"/>
+                  <rect x="70" y="190" width="260" height="85" fill="#c42b2b"/>
+                  <text x="200" y="250" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" font-size="46" fill="white" text-anchor="middle" letter-spacing="0.5">PDF</text>
+                </svg>
+
+                <div class="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-50/50 rounded-lg p-1.5" v-else>
+                  <svg class="w-5 h-5 opacity-60 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                  <span class="text-[7px] font-bold uppercase tracking-wider text-slate-400">{{ getExtension(item.name) }}</span>
+                </div>
+              </div>
+              
+              <div class="w-full">
+                <h3 class="text-[10px] sm:text-[11px] font-bold text-slate-700 truncate px-0.5 group-hover:text-blue-600 transition-colors">{{ item.name }}</h3>
+                <p v-if="item.mimeType !== 'application/vnd.google-apps.folder'" class="text-[8px] sm:text-[9px] text-slate-400 mt-0.5 font-bold tracking-wider uppercase">
+                  {{ formatSize(item.size) }}
+                </p>
+                <p class="text-[8px] sm:text-[9px] text-slate-400 mt-0.5 font-bold uppercase tracking-wider" v-else>{{ t.folder }}</p>
               </div>
             </div>
-            
-            <div class="w-full">
-              <h3 class="text-[10px] sm:text-[11px] font-bold text-slate-700 truncate px-0.5 group-hover:text-blue-600 transition-colors">{{ item.name }}</h3>
-              <p v-if="item.mimeType !== 'application/vnd.google-apps.folder'" class="text-[8px] sm:text-[9px] text-slate-400 mt-0.5 font-bold tracking-wider uppercase">
-                {{ formatSize(item.size) }}
-              </p>
-              <p class="text-[8px] sm:text-[9px] text-slate-400 mt-0.5 font-bold uppercase tracking-wider" v-else>{{ t.folder }}</p>
-            </div>
-          </div>
+          </template>
         </div>
 
         <div v-else-if="viewMode === 'list'" class="overflow-x-auto border border-slate-100 rounded-xl sm:border-none sm:rounded-none">
@@ -228,73 +239,88 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-50">
-              <tr v-for="item in displayItems" :key="item.id" @click="handleItemClick(item)" :class="{'bg-slate-50': isSelected(item)}" class="hover:bg-slate-50/70 cursor-pointer group">
-                <td class="pl-4 sm:pl-5 pr-0 py-1.5" @click.stop="item.mimeType !== 'application/vnd.google-apps.folder' ? toggleSelection(item) : null">
-                  <div v-if="item.mimeType !== 'application/vnd.google-apps.folder'" class="w-3.5 h-3.5 rounded border border-slate-300 bg-white flex items-center justify-center" :class="{'bg-theme-primary border-theme-primary': isSelected(item)}">
-                    <svg v-if="isSelected(item)" class="w-2.5 h-2.5 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                  </div>
-                </td>
-                <td class="pl-2 pr-4 py-1.5 font-semibold text-slate-700 whitespace-nowrap flex items-center gap-2.5 sm:gap-3">
-                  <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-md overflow-hidden flex items-center justify-center shrink-0 border border-slate-100 bg-white relative">
-                    <svg class="w-4 h-4 sm:w-5 sm:h-5 text-theme-primary fill-current" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
-                    <img v-if="isImage(item.name)" :src="getPreviewUrl(item, 'list')" class="w-full h-full object-cover" />
-                    
-                    <div v-else-if="isVideo(item.name)" class="w-full h-full relative flex items-center justify-center bg-slate-100">
-                      <video :src="getPreviewUrl(item, 'list')" class="w-full h-full object-cover" preload="metadata" muted playsinline></video>
-                      <div class="absolute inset-0 bg-slate-900/20 flex items-center justify-center">
-                        <svg class="w-3 h-3 text-white drop-shadow-sm" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                      </div>
+              <template v-for="item in displayItems" :key="item.id">
+                <tr v-if="item.isHeader" @click="toggleGroup(item.groupKey)" class="bg-slate-50/50 hover:bg-slate-100/80 cursor-pointer select-none transition-colors group/row text-left">
+                  <td colspan="6" class="pl-4 py-2.5">
+                    <div class="flex items-center gap-2 w-full">
+                      <svg class="w-3.5 h-3.5 text-slate-400 group-hover/row:text-slate-700 transition-transform duration-150 shrink-0" :class="{'rotate-[-90deg]': collapsedGroups[item.groupKey]}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+                      </svg>
+                      <span class="text-xs font-bold text-slate-700 group-hover/row:text-blue-600 transition-colors uppercase tracking-wider">{{ item.label }}</span>
+                      <span class="text-slate-400 text-xs font-bold">({{ item.count }})</span>
+                      <div class="flex-1 h-px bg-slate-200/70 ml-2"></div>
                     </div>
+                  </td>
+                </tr>
 
-                    <svg v-else-if="isWord(item.name)" class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
-                      <path d="M240 60V110H290L240 60Z" fill="black"/>
-                      <rect x="70" y="190" width="260" height="85" fill="#345a9a"/>
-                      <text x="200" y="250" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" font-size="46" fill="white" text-anchor="middle" letter-spacing="0.5">DOCX</text>
-                    </svg>
+                <tr v-else @click="handleItemClick(item)" :class="{'bg-slate-50': isSelected(item)}" class="hover:bg-slate-50/70 cursor-pointer group">
+                  <td class="pl-4 sm:pl-5 pr-0 py-1.5" @click.stop="item.mimeType !== 'application/vnd.google-apps.folder' ? toggleSelection(item) : null">
+                    <div v-if="item.mimeType !== 'application/vnd.google-apps.folder'" class="w-3.5 h-3.5 rounded border border-slate-300 bg-white flex items-center justify-center" :class="{'bg-theme-primary border-theme-primary': isSelected(item)}">
+                      <svg v-if="isSelected(item)" class="w-2.5 h-2.5 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                  </td>
+                  <td class="pl-2 pr-4 py-1.5 font-semibold text-slate-700 whitespace-nowrap flex items-center gap-2.5 sm:gap-3">
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-md overflow-hidden flex items-center justify-center shrink-0 border border-slate-100 bg-white relative">
+                      <svg class="w-4 h-4 sm:w-5 sm:h-5 text-theme-primary fill-current" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                      <img v-if="isImage(item.name)" :src="getPreviewUrl(item, 'list')" class="w-full h-full object-cover" />
+                      
+                      <div v-else-if="isVideo(item.name)" class="w-full h-full relative flex items-center justify-center bg-slate-100">
+                        <video :src="getPreviewUrl(item, 'list')" class="w-full h-full object-cover" preload="metadata" muted playsinline></video>
+                        <div class="absolute inset-0 bg-slate-900/20 flex items-center justify-center">
+                          <svg class="w-3 h-3 text-white drop-shadow-sm" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        </div>
+                      </div>
 
-                    <svg v-else-if="isExcel(item.name)" class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
-                      <path d="M240 60V110H290L240 60Z" fill="black"/>
-                      <rect x="70" y="190" width="260" height="85" fill="#137e43"/>
-                      <text x="200" y="250" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" font-size="46" fill="white" text-anchor="middle" letter-spacing="0.5">XLSX</text>
-                    </svg>
+                      <svg v-else-if="isWord(item.name)" class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
+                        <path d="M240 60V110H290L240 60Z" fill="black"/>
+                        <rect x="70" y="190" width="260" height="85" fill="#345a9a"/>
+                        <text x="200" y="250" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" font-size="46" fill="white" text-anchor="middle" letter-spacing="0.5">DOCX</text>
+                      </svg>
 
-                    <svg v-else-if="isPPTX(item.name)" class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
-                      <path d="M240 60V110H290L240 60Z" fill="black"/>
-                      <rect x="70" y="190" width="260" height="85" fill="#d24715"/>
-                      <text x="200" y="250" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" font-size="46" fill="white" text-anchor="middle" letter-spacing="0.5">PPTX</text>
-                    </svg>
+                      <svg v-else-if="isExcel(item.name)" class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
+                        <path d="M240 60V110H290L240 60Z" fill="black"/>
+                        <rect x="70" y="190" width="260" height="85" fill="#137e43"/>
+                        <text x="200" y="250" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" font-size="46" fill="white" text-anchor="middle" letter-spacing="0.5">XLSX</text>
+                      </svg>
 
-                    <svg v-else-if="isPDF(item.name)" class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
-                      <path d="M240 60V110H290L240 60Z" fill="black"/>
-                      <rect x="70" y="190" width="260" height="85" fill="#c42b2b"/>
-                      <text x="200" y="250" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" font-size="46" fill="white" text-anchor="middle" letter-spacing="0.5">PDF</text>
-                    </svg>
+                      <svg v-else-if="isPPTX(item.name)" class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
+                        <path d="M240 60V110H290L240 60Z" fill="black"/>
+                        <rect x="70" y="190" width="260" height="85" fill="#d24715"/>
+                        <text x="200" y="250" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" font-size="46" fill="white" text-anchor="middle" letter-spacing="0.5">PPTX</text>
+                      </svg>
 
-                    <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" v-else><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                  </div>
-                  <div class="flex flex-col">
-                     <span class="truncate text-[11px] sm:text-xs font-bold text-slate-800 max-w-[150px] sm:max-w-md group-hover:text-blue-600 transition-colors">{{ item.name }}</span>
-                     <span v-if="item.mimeType !== 'application/vnd.google-apps.folder'" class="text-[9px] text-slate-400 sm:hidden mt-0.5">{{ formatSize(item.size) }}</span>
-                  </div>
-                </td>
-                <td class="px-3 py-1.5 text-slate-500 text-xs font-bold hidden sm:table-cell">{{ item.mimeType === 'application/vnd.google-apps.folder' ? '--' : formatSize(item.size) }}</td>
-                <td class="px-3 py-1.5 text-slate-400 text-xs font-bold uppercase hidden md:table-cell">{{ item.mimeType === 'application/vnd.google-apps.folder' ? t.folder : getExtension(item.name) }}</td>
-                <td class="px-2 py-1.5 text-center">
-                  <button v-if="item.mimeType !== 'application/vnd.google-apps.folder'" @click.stop="shareItem(item)" class="inline-flex items-center justify-center p-1 text-slate-400 hover:text-slate-900 bg-white border border-slate-200 rounded-md shadow-sm">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                  </button>
-                </td>
-                <td class="px-2 py-1.5 text-center">
-                  <button v-if="item.mimeType !== 'application/vnd.google-apps.folder'" @click.stop="downloadItem(item)" :disabled="downloadingItemId === item.id" class="inline-flex items-center justify-center p-1 bg-white border border-slate-200 rounded-md shadow-sm">
-                    <svg v-if="downloadingItemId === item.id" class="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2a8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                    <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" v-else><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                  </button>
-                </td>
-              </tr>
+                      <svg v-else-if="isPDF(item.name)" class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M110 60H240L290 110V340H110V60Z" fill="white" stroke="black" stroke-width="24" stroke-linejoin="miter"/>
+                        <path d="M240 60V110H290L240 60Z" fill="black"/>
+                        <rect x="70" y="190" width="260" height="85" fill="#c42b2b"/>
+                        <text x="200" y="250" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" font-size="46" fill="white" text-anchor="middle" letter-spacing="0.5">PDF</text>
+                      </svg>
+
+                      <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" v-else><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                    </div>
+                    <div class="flex flex-col">
+                       <span class="truncate text-[11px] sm:text-xs font-bold text-slate-800 max-w-[150px] sm:max-w-md group-hover:text-blue-600 transition-colors">{{ item.name }}</span>
+                       <span v-if="item.mimeType !== 'application/vnd.google-apps.folder'" class="text-[9px] text-slate-400 sm:hidden mt-0.5">{{ formatSize(item.size) }}</span>
+                    </div>
+                  </td>
+                  <td class="px-3 py-1.5 text-slate-500 text-xs font-bold hidden sm:table-cell">{{ item.mimeType === 'application/vnd.google-apps.folder' ? '--' : formatSize(item.size) }}</td>
+                  <td class="px-3 py-1.5 text-slate-400 text-xs font-bold uppercase hidden md:table-cell">{{ item.mimeType === 'application/vnd.google-apps.folder' ? t.folder : getExtension(item.name) }}</td>
+                  <td class="px-2 py-1.5 text-center">
+                    <button v-if="item.mimeType !== 'application/vnd.google-apps.folder'" @click.stop="shareItem(item)" class="inline-flex items-center justify-center p-1 text-slate-400 hover:text-slate-900 bg-white border border-slate-200 rounded-md shadow-sm">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                    </button>
+                  </td>
+                  <td class="px-2 py-1.5 text-center">
+                    <button v-if="item.mimeType !== 'application/vnd.google-apps.folder'" @click.stop="downloadItem(item)" :disabled="downloadingItemId === item.id" class="inline-flex items-center justify-center p-1 bg-white border border-slate-200 rounded-md shadow-sm">
+                      <svg v-if="downloadingItemId === item.id" class="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2a8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                      <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" v-else><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    </button>
+                  </td>
+                </tr>
+              </template>
             </tbody>
           </table>
         </div>
@@ -428,6 +454,13 @@ const previewUrl = ref('')
 
 const isMobile = ref(false)
 
+// 🌟 GÜNCELLEME: Windows Gezgini açılıp kapanma durum hafızası
+const collapsedGroups = ref({})
+
+const toggleGroup = (groupKey) => {
+  collapsedGroups.value[groupKey] = !collapsedGroups.value[groupKey]
+}
+
 const checkDevice = () => {
   isMobile.value = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 640
 }
@@ -484,8 +517,9 @@ watch(selectedFile, (newFile) => {
   loadPreviewUrl(newFile)
 })
 
+// 🌟 GÜNCELLEME: Kaydırıcı galerisinin Windows başlık satırlarından etkilenmemesi sağlandı
 const previewableFiles = computed(() => {
-  return displayItems.value.filter(item => item.mimeType !== 'application/vnd.google-apps.folder')
+  return items.value.filter(item => item.mimeType !== 'application/vnd.google-apps.folder')
 })
 
 const currentFileIndex = computed(() => {
@@ -544,7 +578,6 @@ const goToParentFolder = () => {
   if (!currentPath.value) return
   if (['customer', 'müşteri'].includes(userSession.value?.role)) {
     const allowed = userSession.value?.allowedFolders || []
-    // 🌟 SÖZDİZİMİ DÜZELTİLDİ: of yerine tek kelime isRootOfAllowed atandı
     const isRootOfAllowed = allowed.some(f => f.id === currentPath.value)
     if (isRootOfAllowed) {
       fetchFiles('') 
@@ -630,7 +663,6 @@ const shareItem = (item) => {
 
 const fallbackCopyTextToClipboard = (text) => {
   const textArea = document.createElement("textarea")
-  // 🌟 SÖZDİZİMİ DÜZELTİLDİ: Tanımlı değişken ismine sadık kalınarak textArea çağrıldı
   textArea.value = text
   textArea.style.position = "fixed"
   textArea.style.left = "-9999px"
@@ -744,6 +776,20 @@ const getPreviewUrl = (item, mode) => {
   return baseLink
 }
 
+// 🌟 GÜNCELLEME: Dinamik Windows Gezgini uzantı yakalama mantığı
+const getGroupType = (item) => {
+  if (item.mimeType === 'application/vnd.google-apps.folder') return 'folder'
+  if (!item.name.includes('.')) return 'OTHER'
+  return item.name.split('.').pop().toUpperCase()
+}
+
+const getGroupLabel = (key) => {
+  if (key === 'folder') {
+    return currentLang.value === 'tr' ? 'Klasörler' : 'Folders'
+  }
+  return currentLang.value === 'tr' ? `${key} Dosyaları` : `${key} Files`
+}
+
 const goToRoot = () => { 
   searchQuery.value = "" 
   fetchFiles('') 
@@ -754,6 +800,7 @@ const fetchFiles = async (path = "") => {
   systemMessage.value = null
   clearSelection() 
   closeAllDropdowns() 
+  collapsedGroups.value = {}
 
   try {
     const response = await axios.get(`${API_BASE}/files?path=${encodeURIComponent(path)}`)
@@ -766,6 +813,30 @@ const fetchFiles = async (path = "") => {
     }
   } catch (error) {
     systemMessage.value = "Cannot access the cloud server (backend). Please check your Docker containers."
+  } finally {
+    loading.value = false
+  }
+}
+
+// 🌟 GÜNCELLEME: Kayıp arama fonksiyonu sisteme tam sürüm halinde eklendi
+const fetchGlobalSearch = async (query) => {
+  loading.value = true
+  systemMessage.value = null
+  clearSelection()
+  closeAllDropdowns()
+  collapsedGroups.value = {}
+
+  try {
+    const response = await axios.get(`${API_BASE}/api/search?query=${encodeURIComponent(query)}`)
+    if (response.data.error) {
+      systemMessage.value = response.data.error
+      items.value = []
+    } else {
+      items.value = response.data.files || []
+    }
+  } catch (error) {
+    systemMessage.value = "Arama işlemi gerçekleştirilirken backend sunucusunda hata oluştu."
+    console.error("Arama Hatası:", error)
   } finally {
     loading.value = false
   }
@@ -788,9 +859,11 @@ const handleItemClick = (item) => {
   }
 }
 
+// 🌟 GÜNCELLEME: Windows Gezgini Tipi Birebir Uzantı Gruplama Algoritması
 const displayItems = computed(() => {
   let filteredList = [...items.value]
-  return filteredList.sort((a, b) => {
+  
+  filteredList.sort((a, b) => {
     const isFolderA = a.mimeType === 'application/vnd.google-apps.folder' ? 1 : 0
     const isFolderB = b.mimeType === 'application/vnd.google-apps.folder' ? 1 : 0
     if (isFolderA !== isFolderB) return isFolderB - isFolderA
@@ -804,6 +877,44 @@ const displayItems = computed(() => {
     }
     return 0
   })
+
+  if (searchQuery.value.trim()) {
+    const groups = {}
+
+    filteredList.forEach(item => {
+      const type = getGroupType(item)
+      if (!groups[type]) {
+        groups[type] = []
+      }
+      groups[type].push(item)
+    })
+
+    const sortedKeys = Object.keys(groups).sort((a, b) => {
+      if (a === 'folder') return -1
+      if (b === 'folder') return 1
+      return a.localeCompare(b)
+    })
+
+    const result = []
+    sortedKeys.forEach(key => {
+      if (groups[key].length > 0) {
+        result.push({
+          id: `header-${key}`,
+          isHeader: true,
+          groupKey: key,
+          label: getGroupLabel(key),
+          count: groups[key].length
+        })
+        
+        if (!collapsedGroups.value[key]) {
+          result.push(...groups[key])
+        }
+      }
+    })
+    return result
+  }
+
+  return filteredList
 })
 
 onMounted(() => {

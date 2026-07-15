@@ -29,6 +29,7 @@ from database import SessionLocal, UserDB, RoleDB, Base, engine
 class RoleRequest(BaseModel):
     name: str
     allowedFolders: List[dict] = []
+    isAdmin: Optional[bool] = False
 
 class UserCreateRequest(BaseModel):
     name: str
@@ -104,6 +105,11 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Security(securi
     user = db.query(UserDB).filter(UserDB.email == email).first()
     if not user: raise HTTPException(status_code=401, detail="User not found in system.")
     if not user.is_active: raise HTTPException(status_code=403, detail="Your account has been suspended.")
+    
+    if user.is_superadmin:
+        user.role = "superadmin"
+    elif user.role_rel and user.role_rel.is_admin:
+        user.role = "admin"
     return user
 
 def init_db():
@@ -117,13 +123,18 @@ def init_db():
             except: pass
             try: conn.execute(text("ALTER TABLE users ADD COLUMN company VARCHAR;")); conn.commit()
             except: pass
+            try: conn.execute(text("ALTER TABLE roles ADD COLUMN is_admin BOOLEAN DEFAULT 0;")); conn.commit()
+            except: pass
+            # Otomatik kolon koruması: SQLite veritabanına is_superadmin alanını enjekte eder
+            try: conn.execute(text("ALTER TABLE users ADD COLUMN is_superadmin BOOLEAN DEFAULT 0;")); conn.commit()
+            except: pass
     except Exception as e: print(f"Database sync alert: {e}")
 
     db = SessionLocal()
     try:
         admin_role = db.query(RoleDB).filter(RoleDB.name == "Administrator").first()
         if not admin_role:
-            admin_role = RoleDB(name="Administrator", allowed_folders=[{"id": "", "name": "Full Server", "allowed": True}])
+            admin_role = RoleDB(name="Administrator", allowed_folders=[{"id": "", "name": "Full Server", "allowed": True}], is_admin=True)
             db.add(admin_role)
             db.commit()
             db.refresh(admin_role)
@@ -184,7 +195,6 @@ def background_index_crawl():
         queue = [""]
         folders_scanned = 0
         
-        # 🌟 GÜNCELLEME: Klasör tarama tavan sınırı 1500'den 100.000'e çekildi. 32.000+ dosyanızın tamamı taranacaktır.
         while queue and folders_scanned < 100000:
             current_path = queue.pop(0)
             folders_scanned += 1
@@ -227,32 +237,37 @@ def startup_event():
 # ROLE API
 @app.get("/api/roles")
 def get_roles(db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
-    return [{"id": r.id, "name": r.name, "allowedFolders": r.allowed_folders or []} for r in db.query(RoleDB).all()]
+    if current_user.role not in ["admin", "superadmin"]: raise HTTPException(status_code=403, detail="Permission denied.")
+    return [{"id": r.id, "name": r.name, "allowedFolders": r.allowed_folders or [], "isAdmin": r.is_admin} for r in db.query(RoleDB).all()]
 
 @app.post("/api/roles")
 def create_role(payload: RoleRequest, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
+    if current_user.role not in ["admin", "superadmin"]: raise HTTPException(status_code=403, detail="Permission denied.")
     if db.query(RoleDB).filter(RoleDB.name == payload.name).first(): raise HTTPException(status_code=400, detail="A role with this name already exists.")
-    db.add(RoleDB(name=payload.name, allowed_folders=payload.allowedFolders))
+    db.add(RoleDB(name=payload.name, allowed_folders=payload.allowedFolders, is_admin=payload.isAdmin))
     db.commit()
     return {"message": "Role successfully created."}
 
 @app.put("/api/roles/{role_id}")
 def update_role(role_id: int, payload: RoleRequest, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
+    if current_user.role not in ["admin", "superadmin"]: raise HTTPException(status_code=403, detail="Permission denied.")
     role = db.query(RoleDB).filter(RoleDB.id == role_id).first()
     if not role: raise HTTPException(status_code=404, detail="Role not found.")
-    role.name = payload.name; role.allowed_folders = payload.allowedFolders
+    
+    role.name = payload.name
+    role.allowed_folders = payload.allowedFolders
+    role.is_admin = payload.isAdmin
+    
+    db.query(UserDB).filter(UserDB.role_id == role_id, UserDB.is_superadmin == False).update({UserDB.role: "admin" if payload.isAdmin else "customer"})
     db.commit()
     return {"message": "Role successfully updated."}
 
 @app.delete("/api/roles/{role_id}")
 def delete_role(role_id: int, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
+    if current_user.role not in ["admin", "superadmin"]: raise HTTPException(status_code=403, detail="Permission denied.")
     role = db.query(RoleDB).filter(RoleDB.id == role_id).first()
     if not role: raise HTTPException(status_code=404, detail="Role not found.")
-    db.query(UserDB).filter(UserDB.role_id == role_id).update({UserDB.role_id: None})
+    db.query(UserDB).filter(UserDB.role_id == role_id, UserDB.is_superadmin == False).update({UserDB.role_id: None, UserDB.role: "customer"})
     db.delete(role)
     db.commit()
     return {"message": "Role successfully deleted."}
@@ -260,40 +275,69 @@ def delete_role(role_id: int, db: Session = Depends(get_db), current_user: UserD
 # USER API
 @app.get("/api/users")
 def get_users(db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
-    return [{"id": u.id, "name": u.name, "email": u.email, "role_id": u.role_id, "role_name": u.role_rel.name if u.role_rel else "No Role Assigned", "company": u.company, "isActive": u.is_active} for u in db.query(UserDB).all()]
+    if current_user.role not in ["admin", "superadmin"]: raise HTTPException(status_code=403, detail="Permission denied.")
+    return [{"id": u.id, "name": u.name, "email": u.email, "role_id": u.role_id, "role_name": u.role_rel.name if u.role_rel else "No Role Assigned", "company": u.company, "isActive": u.is_active, "isSuperAdmin": u.is_superadmin} for u in db.query(UserDB).all()]
 
 @app.post("/api/users")
 def create_user(payload: UserCreateRequest, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
+    if current_user.role not in ["admin", "superadmin"]: raise HTTPException(status_code=403, detail="Permission denied.")
     if db.query(UserDB).filter(UserDB.email == payload.email).first(): raise HTTPException(status_code=400, detail="This email address is already in use.")
-    db.add(UserDB(name=payload.name, email=payload.email, password=get_password_hash(payload.password), role=payload.role, role_id=payload.role_id, company=payload.company, is_active=payload.isActive))
+    
+    text_role = "customer"
+    if payload.role_id:
+        r_obj = db.query(RoleDB).filter(RoleDB.id == payload.role_id).first()
+        if r_obj and r_obj.is_admin:
+            text_role = "admin"
+            
+    db.add(UserDB(name=payload.name, email=payload.email, password=get_password_hash(payload.password), role=text_role, role_id=payload.role_id, company=payload.company, is_active=payload.isActive, is_superadmin=False))
     db.commit()
     return {"message": "User successfully created."}
 
 @app.put("/api/users/{user_id}")
 def update_user(user_id: int, payload: UserUpdateRequest, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
+    if current_user.role not in ["admin", "superadmin"]: raise HTTPException(status_code=403, detail="Permission denied.")
     target_user = db.query(UserDB).filter(UserDB.id == user_id).first()
     if not target_user: raise HTTPException(status_code=404, detail="User not found.")
-    target_user.name = payload.name; target_user.email = payload.email; target_user.role_id = payload.role_id; target_user.company = payload.company; target_user.is_active = payload.isActive
+    
+    # 👑 KORUMA: Normal admin Süper Admin olan bir kullanıcıyı düzenleyemez
+    if target_user.is_superadmin and current_user.role != "superadmin":
+        raise HTTPException(status_code=403, detail="Süper Admin seviyesindeki kullanıcılara müdahale edemezsiniz.")
+        
+    text_role = "customer"
+    if payload.role_id:
+        r_obj = db.query(RoleDB).filter(RoleDB.id == payload.role_id).first()
+        if r_obj and r_obj.is_admin:
+            text_role = "admin"
+            
+    target_user.name = payload.name
+    target_user.email = payload.email
+    target_user.role_id = payload.role_id
+    if not target_user.is_superadmin:
+        target_user.role = text_role
+    target_user.company = payload.company
+    target_user.is_active = payload.isActive
     if payload.password: target_user.password = get_password_hash(payload.password)
     db.commit()
     return {"message": "User successfully updated."}
 
 @app.delete("/api/users/{user_id}")
 def delete_user(user_id: int, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
+    if current_user.role not in ["admin", "superadmin"]: raise HTTPException(status_code=403, detail="Permission denied.")
     target_user = db.query(UserDB).filter(UserDB.id == user_id).first()
     if not target_user: raise HTTPException(status_code=404, detail="User not found.")
     if target_user.id == current_user.id: raise HTTPException(status_code=400, detail="You cannot delete your own account.")
+    
+    # 👑 KORUMA: Normal admin Süper Admin kullanıcısını silemez
+    if target_user.is_superadmin and current_user.role != "superadmin":
+        raise HTTPException(status_code=403, detail="Süper Admin kullanıcıları silme yetkiniz yoktur.")
+        
     db.delete(target_user)
     db.commit()
     return {"message": "User successfully deleted."}
 
 @app.post("/api/users/bulk")
 async def bulk_create_users(file: UploadFile = File(...), db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
+    if current_user.role not in ["admin", "superadmin"]: raise HTTPException(status_code=403, detail="Permission denied.")
     content = await file.read()
     try:
         wb = openpyxl.load_workbook(filename=io.BytesIO(content), data_only=True)
@@ -328,18 +372,20 @@ async def bulk_create_users(file: UploadFile = File(...), db: Session = Depends(
             is_admin_role = False
             if role_id:
                 r_obj = db.query(RoleDB).filter(RoleDB.id == role_id).first()
-                if r_obj and "admin" in r_obj.name.lower():
+                if r_obj and r_obj.is_admin:
                     is_admin_role = True
             text_role = "admin" if is_admin_role else "customer"
 
             existing = db.query(UserDB).filter(UserDB.email == email).first()
             if existing:
+                if existing.is_superadmin and current_user.role != "superadmin":
+                    continue # Normal admin Excel listesinden Süper Admini ezemez
                 existing.role_id = role_id
-                existing.role = text_role 
+                if not existing.is_superadmin: existing.role = text_role 
                 if company_str: existing.company = company_str
                 updated_count += 1
             else:
-                db.add(UserDB(name=email.split('@')[0], email=email, password=get_password_hash(password), role=text_role, role_id=role_id, company=company_str, is_active=True))
+                db.add(UserDB(name=email.split('@')[0], email=email, password=get_password_hash(password), role=text_role, role_id=role_id, company=company_str, is_active=True, is_superadmin=False))
                 added_count += 1
         db.commit()
         return {"message": f"System: {added_count} new users added, {updated_count} users successfully updated."}
@@ -351,15 +397,21 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     if not user or not user.is_active: raise HTTPException(status_code=401, detail="Login credentials verification failed.")
     if not verify_password(payload.password, user.password): raise HTTPException(status_code=401, detail="Login credentials verification failed.")
     
-    token = create_access_token(data={"sub": user.email, "role": user.role})
+    role_text = user.role
+    if user.is_superadmin:
+        role_text = "superadmin"
+    elif user.role_rel and user.role_rel.is_admin:
+        role_text = "admin"
+        
+    token = create_access_token(data={"sub": user.email, "role": role_text})
     resolved_folders = user.role_rel.allowed_folders if user.role_rel else (user.allowed_folders if user.allowed_folders else [])
     
     return {
         "id": user.id, 
         "name": user.name or "System Administrator", 
         "email": user.email, 
-        "role": user.role, 
-        "role_name": user.role_rel.name if user.role_rel else "Customer",
+        "role": role_text, 
+        "role_name": user.role_rel.name if user.role_rel else ("Super Admin" if user.is_superadmin else "Customer"),
         "role_id": user.role_id, 
         "allowedFolders": resolved_folders, 
         "isActive": user.is_active, 
@@ -368,14 +420,14 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 
 @app.get("/api/cdn")
 def get_cdn_settings(current_user: UserDB = Depends(get_current_user)):
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
+    if current_user.role not in ["admin", "superadmin"]: raise HTTPException(status_code=403, detail="Permission denied.")
     cfg = load_cdn_config()
     return {"storageName": cfg.get("BUNNY_STORAGE_NAME"), "storagePassword": cfg.get("BUNNY_STORAGE_PASSWORD"), "pullZoneUrl": cfg.get("BUNNY_PULL_ZONE_URL"), "region": cfg.get("BUNNY_REGION")}
 
 @app.post("/api/cdn")
 def update_cdn_settings(payload: CDNConfigUpdateRequest, background_tasks: BackgroundTasks, current_user: UserDB = Depends(get_current_user)):
     global LAST_INDEX_TIME, GLOBAL_FILE_INDEX
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
+    if current_user.role not in ["admin", "superadmin"]: raise HTTPException(status_code=403, detail="Permission denied.")
     save_cdn_config({"BUNNY_STORAGE_NAME": payload.storageName, "BUNNY_STORAGE_PASSWORD": payload.storagePassword, "BUNNY_PULL_ZONE_URL": payload.pullZoneUrl, "BUNNY_REGION": payload.region})
     LAST_INDEX_TIME = None 
     GLOBAL_FILE_INDEX = []
@@ -385,7 +437,7 @@ def update_cdn_settings(payload: CDNConfigUpdateRequest, background_tasks: Backg
 @app.post("/api/cdn/index")
 def trigger_manual_indexing(background_tasks: BackgroundTasks, current_user: UserDB = Depends(get_current_user)):
     global IS_INDEXING
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
+    if current_user.role not in ["admin", "superadmin"]: raise HTTPException(status_code=403, detail="Permission denied.")
     if IS_INDEXING: return {"message": "Indexing is already running in background.", "status": "running"}
     background_tasks.add_task(background_index_crawl)
     return {"message": "Manual search index task successfully deployed.", "status": "started"}
@@ -393,7 +445,7 @@ def trigger_manual_indexing(background_tasks: BackgroundTasks, current_user: Use
 @app.get("/api/cdn/index-status")
 def get_index_status(current_user: UserDB = Depends(get_current_user)):
     global LAST_INDEX_TIME, GLOBAL_FILE_INDEX, IS_INDEXING
-    if current_user.role != "admin": raise HTTPException(status_code=403, detail="Permission denied.")
+    if current_user.role not in ["admin", "superadmin"]: raise HTTPException(status_code=403, detail="Permission denied.")
     return {
         "is_indexing": IS_INDEXING,
         "last_index_time": LAST_INDEX_TIME.isoformat() if LAST_INDEX_TIME else None,

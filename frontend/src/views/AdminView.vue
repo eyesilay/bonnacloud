@@ -19,6 +19,13 @@
           <button @click="activeTab = 'roles'" :class="activeTab === 'roles' ? 'bg-white text-slate-900 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-900'" class="px-4 py-1.5 rounded-lg text-xs transition-all">{{ t.rolesPermissions }}</button>
           <button @click="activeTab = 'cdn'" :class="activeTab === 'cdn' ? 'bg-white text-slate-900 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-900'" class="px-4 py-1.5 rounded-lg text-xs transition-all">{{ t.cdnEngine }}</button>
         </div>
+
+        <div class="h-5 w-px bg-slate-200 hidden sm:block mx-1"></div>
+
+        <button @click="handleLogout" class="flex items-center gap-1.5 text-xs font-bold text-red-600 hover:text-red-700 border border-red-100 hover:border-red-200 bg-red-50 hover:bg-red-100 px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shadow-sm active:scale-95">
+          <svg class="w-3.5 h-3.5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+          <span class="hidden sm:inline">{{ t.logout }}</span>
+        </button>
       </div>
     </header>
 
@@ -33,7 +40,6 @@
             <button v-if="selectedUsers.length > 0" @click="deleteSelectedUsers" class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95 animate-fade-in">
               🗑️ {{ t.deleteSelected }} ({{ selectedUsers.length }})
             </button>
-            
             <input type="file" ref="fileInput" @change="handleBulkUpload" accept=".xlsx" class="hidden" />
             <button @click="triggerBulkUpload" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95">📥 {{ t.importExcel }}</button>
             <button @click="openUserModal(null)" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95">{{ t.addNewUser }}</button>
@@ -58,9 +64,12 @@
             <tbody class="divide-y divide-slate-50 font-medium text-slate-700">
               <tr v-for="(user, index) in users" :key="user.id" class="hover:bg-slate-50/50 transition-colors" :class="{'bg-blue-50/40': selectedUsers.includes(user.id)}">
                 <td class="px-4 py-3.5 w-10 text-center" @click.stop>
-                  <input type="checkbox" :checked="selectedUsers.includes(user.id)" @click="handleUserSelect($event, user.id, index)" class="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-0 cursor-pointer" />
+                  <input type="checkbox" :disabled="user.isSuperAdmin && userSession?.role !== 'superadmin'" :checked="selectedUsers.includes(user.id)" @click="handleUserSelect($event, user.id, index)" class="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-0" :class="user.isSuperAdmin && userSession?.role !== 'superadmin' ? 'cursor-not-allowed': 'cursor-pointer'" />
                 </td>
-                <td class="px-4 py-3.5 font-bold text-slate-900">{{ user.name }}</td>
+                <td class="px-4 py-3.5 font-bold text-slate-900">
+                  {{ user.name }}
+                  <span v-if="user.isSuperAdmin" class="ml-2 text-[9px] bg-purple-600 text-white font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider">👑 Süper Admin</span>
+                </td>
                 <td class="px-4 py-3.5 text-slate-600">{{ user.company || '-' }}</td>
                 <td class="px-4 py-3.5 text-slate-500">{{ user.email }}</td>
                 <td class="px-4 py-3.5">
@@ -70,8 +79,8 @@
                   <span :class="user.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-700 border-red-100'" class="px-2 py-0.5 border rounded-md text-[10px] font-bold">{{ user.isActive ? t.active : t.blocked }}</span>
                 </td>
                 <td class="px-4 py-3.5 flex justify-center gap-1.5">
-                  <button @click="openUserModal(user)" class="p-1.5 border border-slate-200 hover:border-slate-300 bg-white rounded-lg text-slate-600 hover:text-slate-900 shadow-sm">{{ t.edit }}</button>
-                  <button @click="deleteUser(user.id)" class="p-1.5 border border-red-100 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg shadow-sm">{{ t.delete }}</button>
+                  <button @click="openUserModal(user)" :disabled="user.isSuperAdmin && userSession?.role !== 'superadmin'" :class="user.isSuperAdmin && userSession?.role !== 'superadmin' ? 'opacity-30 cursor-not-allowed': 'hover:text-slate-900'" class="p-1.5 border border-slate-200 bg-white rounded-lg text-slate-600 shadow-sm transition-opacity">{{ t.edit }}</button>
+                  <button @click="deleteUser(user.id)" :disabled="user.isSuperAdmin && userSession?.role !== 'superadmin'" :class="user.isSuperAdmin && userSession?.role !== 'superadmin' ? 'opacity-30 cursor-not-allowed': 'hover:bg-red-100'" class="p-1.5 border border-red-100 bg-red-50 text-red-600 rounded-lg shadow-sm transition-opacity">{{ t.delete }}</button>
                 </td>
               </tr>
             </tbody>
@@ -221,7 +230,6 @@
                   <td class="pl-4 py-2 w-8" @click.stop>
                     <input type="checkbox" :id="'item_' + item.id" :checked="isItemChecked(item.id)" @change="handleItemToggle($event, item)" class="w-3.5 h-3.5 rounded text-slate-900 border-slate-300 focus:ring-0 cursor-pointer shadow-sm" />
                   </td>
-                  
                   <td class="pl-2 pr-4 py-1.5 font-semibold text-slate-700 whitespace-nowrap flex items-center gap-2.5">
                     <div class="w-7 h-7 rounded-md overflow-hidden flex items-center justify-center shrink-0 border border-slate-100 bg-white relative shadow-sm select-none">
                       <span v-if="item.mimeType === 'application/vnd.google-apps.folder'" class="text-sm">📁</span>
@@ -234,20 +242,14 @@
                       <span class="truncate text-[11px] font-bold text-slate-800 max-w-[320px] group-hover:text-blue-600 transition-colors">{{ item.name }}</span>
                     </div>
                   </td>
-                  
-                  <td class="px-3 py-1.5 text-slate-500 text-[11px] font-bold">
-                    {{ item.mimeType === 'application/vnd.google-apps.folder' ? '--' : formatSize(item.size) }}
-                  </td>
-                  <td class="px-3 py-1.5 text-slate-400 text-[10px] font-bold uppercase rounded-r-xl">
-                    {{ item.mimeType === 'application/vnd.google-apps.folder' ? t.folder : getExtension(item.name) }}
-                  </td>
+                  <td class="px-3 py-1.5 text-slate-500 text-[11px] font-bold">{{ item.mimeType === 'application/vnd.google-apps.folder' ? '--' : formatSize(item.size) }}</td>
+                  <td class="px-3 py-1.5 text-slate-400 text-[10px] font-bold uppercase rounded-r-xl">{{ item.mimeType === 'application/vnd.google-apps.folder' ? t.folder : getExtension(item.name) }}</td>
                 </tr>
               </tbody>
             </table>
             <div v-if="adminItems.length === 0 && !loadingFolders" class="text-slate-400 italic text-center py-12 text-xs">{{ t.emptyDir }}</div>
           </div>
         </div>
-        
         <div class="flex justify-end gap-2 mt-3 border-t border-slate-100 pt-3 shrink-0">
           <button @click="showRoleModal = false" class="px-4 py-2 border border-slate-200 bg-white rounded-xl text-slate-700">{{ t.cancel }}</button>
           <button @click="saveRole" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl">{{ t.commitChanges }}</button>
@@ -344,6 +346,8 @@ const fileInput = ref(null)
 const selectedUsers = ref([])
 const lastSelectedIndex = ref(null)
 
+const userSession = ref(null)
+
 const cdnForm = ref({ storageName: "", storagePassword: "", pullZoneUrl: "", region: "" })
 const userForm = ref({ id: null, name: "", email: "", password: "", role_id: null, company: "", isActive: true })
 const roleForm = ref({ id: null, name: "", allowedFolders: [], isAdmin: false })
@@ -378,6 +382,12 @@ const acceptConfirm = () => {
 const cancelConfirm = () => {
   confirmDialog.value.isOpen = false
   if (confirmDialog.value.resolvePromise) confirmDialog.value.resolvePromise(false)
+}
+
+// 🌟 GÜNCELLEME: UNUTULAN ÇIKIŞ FONKSİYONU EKLENDİ (VUE DERLEMESİ ARTIK KOPMAYACAK)
+const handleLogout = () => {
+  localStorage.removeItem('bonna_user_session')
+  router.push('/login')
 }
 
 const fetchIndexStatus = async () => {
@@ -668,7 +678,8 @@ const saveCdnSettings = async () => {
 
 onMounted(() => {
   const session = JSON.parse(localStorage.getItem('bonna_user_session') || 'null')
-  if (!session || session.role !== 'admin') return router.push('/login')
+  if (!session || (session.role !== 'admin' && session.role !== 'superadmin')) return router.push('/login')
+  userSession.value = session
   axios.defaults.headers.common['Authorization'] = `Bearer ${session.token}`
   fetchAllData()
 })
